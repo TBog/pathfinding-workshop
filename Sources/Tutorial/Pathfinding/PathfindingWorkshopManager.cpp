@@ -67,7 +67,7 @@ void PathfindingWorkshopManager::Render()
 
 void PathfindingWorkshopManager::_RunSignedAreaExercise()
 {
-	const int pointsCount = 16;
+	const int pointsCount = 6;
 	Vector3 points[pointsCount];
 	for (int i = 0; i < pointsCount; i++)
 	{
@@ -82,12 +82,15 @@ void PathfindingWorkshopManager::_RunSignedAreaExercise()
 		Vector3 p3 = points[(i + 1) % pointsCount];
 		
 		// have all points on the same Y coordinate
-		const float height = i * .1f;
+		const float height = i * .333f;
 		p1.y = height;
 		p2.y = height;
 		p3.y = height;
 
 		g_debugRender->AddLine(p1, p2, Color(1.f, 1.f, 1.f, 1.f));
+		g_debugRender->AddSphere(p1, .05f, Color(1.f, 1.f, 1.f, .5f));
+		g_debugRender->AddSphere(p2, .05f, Color(1.f, 1.f, 1.f, .5f));
+		g_debugRender->AddSphere(p3, .05f, Color(0.f, 0.f, 1.f, .5f));
 		
 		Vector2 testPoints[] = { Vector2(p1.x, p1.z), Vector2(p2.x, p2.z), Vector2(p3.x, p3.z) };
 		const bool matchingIsLeft = m_UserWorkSheet->IsLeft(testPoints[0], testPoints[1], testPoints[2]) != m_ControlWorkSheet->IsLeft(testPoints[0], testPoints[1], testPoints[2]);
