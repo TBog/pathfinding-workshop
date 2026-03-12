@@ -301,13 +301,15 @@ HRESULT DebugRender::CreateResources()
         SelectObject(m_textHDC, m_textFont);
         SetBkMode(m_textHDC, TRANSPARENT);
 
-        // D3D11 dynamic RGBA texture – updated from the GDI bitmap every Flush.
+        // D3D11 dynamic BGRA texture – GDI writes BGRX in memory; DXGI_FORMAT_B8G8R8A8_UNORM
+        // automatically swizzles so the shader receives correct RGBA values.  The alpha
+        // component comes from the reserved GDI byte (always 0) and is re-derived in the shader.
         D3D11_TEXTURE2D_DESC texDesc = {};
         texDesc.Width              = static_cast<UINT>(width);
         texDesc.Height             = static_cast<UINT>(height);
         texDesc.MipLevels          = 1;
         texDesc.ArraySize          = 1;
-        texDesc.Format             = DXGI_FORMAT_R8G8B8A8_UNORM;
+        texDesc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM;
         texDesc.SampleDesc.Count   = 1;
         texDesc.Usage              = D3D11_USAGE_DYNAMIC;
         texDesc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
@@ -321,7 +323,7 @@ HRESULT DebugRender::CreateResources()
         }
 
         D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-        srvDesc.Format                    = DXGI_FORMAT_R8G8B8A8_UNORM;
+        srvDesc.Format                    = DXGI_FORMAT_B8G8R8A8_UNORM;
         srvDesc.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Texture2D.MipLevels       = 1;
         srvDesc.Texture2D.MostDetailedMip = 0;
@@ -820,30 +822,9 @@ void DebugRender::_FlushText()
         DrawTextW( m_textHDC, entry.m_text, -1, &rc, DT_NOCLIP | DT_LEFT );
     }
 
-    // 3. Post-process the bitmap: convert GDI BGR pixels to D3D11 RGBA and set alpha.
-    //    GDI writes to the B,G,R bytes and leaves the reserved byte at 0.
-    //    As a little-endian DWORD each pixel is:  0x00RRGGBB  (B at byte 0).
-    //    D3D11 DXGI_FORMAT_R8G8B8A8_UNORM expects: 0xAABBGGRR  (R at byte 0).
-    //    We swap R<->B and set A=255 for any painted pixel.
-    DWORD *pixels = reinterpret_cast<DWORD *>( m_textBitmapBits );
-    const int pixelCount = width * height;
-    for ( int i = 0; i < pixelCount; i++ )
-    {
-        const DWORD p = pixels[i];
-        if ( p & 0x00FFFFFF )   // at least one of B/G/R is non-zero → painted by GDI
-        {
-            const BYTE b = static_cast<BYTE>( ( p >>  0 ) & 0xFF );  // GDI blue
-            const BYTE g = static_cast<BYTE>( ( p >>  8 ) & 0xFF );  // GDI green
-            const BYTE r = static_cast<BYTE>( ( p >> 16 ) & 0xFF );  // GDI red
-            // Store as RGBA: R at byte 0, G at byte 1, B at byte 2, A=255 at byte 3
-            pixels[i] = static_cast<DWORD>(r)
-                      | ( static_cast<DWORD>(g) <<  8 )
-                      | ( static_cast<DWORD>(b) << 16 )
-                      | 0xFF000000u;
-        }
-    }
-
-    // 4. Upload the converted bitmap to the D3D11 dynamic texture.
+    // 3. Upload the raw GDI BGRX bitmap to the D3D11 dynamic texture.
+    //    DXGI_FORMAT_B8G8R8A8_UNORM handles the B<->R swizzle automatically; the shader
+    //    derives the alpha channel from the colour data.
     ID3D11DeviceContext *d3dContext = g_renderManager->GetDeviceContext();
 
     D3D11_MAPPED_SUBRESOURCE mapped = {};
@@ -867,7 +848,7 @@ void DebugRender::_FlushText()
     }
     d3dContext->Unmap( m_textOverlayTex, 0 );
 
-    // 5. Composite the text overlay over the current render target using a
+    // 4. Composite the text overlay over the current render target using a
     //    fullscreen alpha-blended quad (SRC_ALPHA / INV_SRC_ALPHA).
     float blendFactor[4] = { 0, 0, 0, 0 };
     d3dContext->OMSetBlendState( g_renderManager->GetBlendEnabledState(), blendFactor, 0xFFFFFFFF );
