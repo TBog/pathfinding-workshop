@@ -176,8 +176,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 //--------------------------------------------------------------------------------------
 void InitializeCamera()
 {
-	D3DXVECTOR3 eyePos(7.f, 1.f, 17.f);
-	D3DXVECTOR3 lookAtPos(-2.5f, 10.f, -9.f);
+	D3DXVECTOR3 eyePos(10.f, 10.f, 0.f);
+	//D3DXVECTOR3 lookAtPos(-2.5f, 10.f, -9.f);
+	D3DXVECTOR3 lookAtPos(0.f, 0.f, 0.f);
 	g_renderManager->GetCamera()->SetViewParams(eyePos, lookAtPos);
 
 	float fov = (float)D3DX_PI / 4;
@@ -605,12 +606,12 @@ void ComputeVisibleEntities(DynVec<Entity*>& outVisibleEntitiesList, const DynVe
 {
 	outVisibleEntitiesList.Clear();
 
-	int entitiesCount = entitiesList.GetSize();
+	const int entitiesCount = entitiesList.GetSize();
 	for (int i = 0; i < entitiesCount; i++)
 	{
 		Entity* entity = entitiesList[i];
 
-		constexpr bool bIsFullyInFrustum = false;
+		bool bIsFullyInFrustum = false;
 		if (g_renderManager->GetCamera()->IsBoundingSphereInFrustum(entity->GetBoundingSphere_center(), entity->GetBoundingSphere_radius(), bIsFullyInFrustum) && g_renderManager->GetCamera()->IsAABBInFrustum(entity->GetBoundingAABB_min(), entity->GetBoundingAABB_max(), bIsFullyInFrustum))
 		{
 			outVisibleEntitiesList.Add(entity);
@@ -690,8 +691,7 @@ void Render(float dt)
 	// apply post process
 	g_renderManager->GetPostProcess()->Render(g_HDRRenderTarget, g_depthBuffer);
 
-	// flush debug geometry on top of the post-processed image (LDR back buffer)
-	// so colors are not scaled down by the HDR tone-mapping pass
+	// flush debug geometry after post-process
 	g_debugRender->Flush();
 
 

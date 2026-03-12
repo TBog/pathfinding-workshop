@@ -221,6 +221,9 @@
     <ClCompile Include="Pathfinding\PathfindingWorkshopManager.cpp">
       <Filter>Pathfinding</Filter>
     </ClCompile>
+    <ClCompile Include="Pathfinding\PathfindingWorkSheet.cpp">
+      <Filter>Pathfinding</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Tutorial.rc">
