@@ -92,7 +92,7 @@ void PathfindingWorkshopManager::_RunSignedAreaExercise()
 		Vector2 testPoints[] = { Vector2(p1.x, p1.z), Vector2(p2.x, p2.z), Vector2(p3.x, p3.z) };
 		const bool matchingIsLeft = m_UserWorkSheet->IsLeft(testPoints[0], testPoints[1], testPoints[2]) != m_ControlWorkSheet->IsLeft(testPoints[0], testPoints[1], testPoints[2]);
 
-		// use debug render to draw a red of green check for each test
+		// use debug render to draw a red or green check for each test
 		g_debugRender->AddTriangle(p1, p2, p3, matchingIsLeft ? Color(0.f, 1.f, .5f, .5f) : Color(1.f, 0.f, .5f, .5f));
 	}
 }
