@@ -3,28 +3,86 @@
 #ifndef __FRUSTUM_H__
 #define __FRUSTUM_H__
 
+/// @file Frustum.h
+/// @brief View-frustum plane representation and visibility-test helpers.
+
+/// @brief Initial bitmask enabling all six frustum planes (bits 0–5).
 #define FRT_START_MASK          0x3F
+
+/// @brief Maximum number of frustum planes supported.
 #define FRT_MAX_PLANES          10
 
+/// @struct sFrustumIdx
+/// @brief Compact frustum-plane index pair used during hierarchical culling.
+///
+/// Stores the index of the most-recently-tested "scene" plane (@c scn) and
+/// the "reflection" plane (@c rfl) in 3 bits each, fitting into one byte.
 // 1 byte
 struct sFrustumIdx
 {
-    BYTE scn : 3;
-    BYTE rfl : 3;
-    BYTE pad : 2;
+    BYTE scn : 3;   ///< Index of the last tested scene-side plane.
+    BYTE rfl : 3;   ///< Index of the last tested reflection-side plane.
+    BYTE pad : 2;   ///< Padding to fill the byte.
 };
 
-enum eFrustumTest {FRT_OUT, FRT_IN_OUT, FRT_IN};
+/// @enum eFrustumTest
+/// @brief Result of a frustum visibility test.
+enum eFrustumTest {
+    FRT_OUT,    ///< Object is completely outside the frustum (invisible).
+    FRT_IN_OUT, ///< Object straddles one or more frustum planes (partially visible).
+    FRT_IN      ///< Object is completely inside the frustum (fully visible).
+};
 
+/// @struct sFrustum
+/// @brief View frustum defined by up to @c FRT_MAX_PLANES half-spaces.
+///
+/// Each plane is stored as a @c D3DXVECTOR4 (normal.xyz, offset.w) in
+/// world space such that a point @p P satisfies
+/// @code
+///   dot(plane.xyz, P) + plane.w < 0  →  inside the half-space
+/// @endcode
+///
+/// The @c p_idx and @c n_idx tables pre-compute which AABB corner to test
+/// against each plane's positive and negative normal directions, enabling the
+/// fast AABB-vs-frustum test.
 struct sFrustum
 {
-    D3DXVECTOR4	frustum[FRT_MAX_PLANES];
-    BYTE    p_idx[FRT_MAX_PLANES][3];
-    BYTE    n_idx[FRT_MAX_PLANES][3];
+    D3DXVECTOR4	frustum[FRT_MAX_PLANES]; ///< Plane equations (normal.xyz, offset.w).
+    BYTE    p_idx[FRT_MAX_PLANES][3];    ///< Positive-normal corner indices per plane.
+    BYTE    n_idx[FRT_MAX_PLANES][3];    ///< Negative-normal corner indices per plane.
 
+    /// @brief Recomputes all frustum planes from a camera world matrix and projection params.
+    ///
+    /// @param _mxCamWorld Camera-to-world matrix (inverse view).
+    /// @param sx          Half-width of the view frustum at unit depth (tan(fovX/2)).
+    /// @param sy          Half-height of the view frustum at unit depth (tan(fovY/2)).
+    /// @param _fZNear     Near-plane distance.
+    /// @param _fZFar      Far-plane distance.
+    /// @param ext         Optional outward extent used to inflate the frustum.
     void            ComputeFrustum      (const D3DXMATRIX &_mxCamWorld, float sx, float sy, float _fZNear, float _fZFar, float ext);
 
+    /// @brief Tests a bounding sphere against the frustum planes specified by @p in_mask.
+    ///
+    /// @param _vCenter  World-space centre of the sphere.
+    /// @param _fRadius  Radius of the sphere.
+    /// @param in_mask   Bitmask of planes to test (bit @c k → plane @c k).
+    ///                  Pass @c FRT_START_MASK to test all six standard planes.
+    /// @return @c FRT_OUT, @c FRT_IN_OUT, or @c FRT_IN.
     inline eFrustumTest    BSvsFrustumTest     (const D3DXVECTOR3 &_vCenter, float _fRadius, int in_mask);
+
+    /// @brief Tests an axis-aligned bounding box against the frustum planes.
+    ///
+    /// Uses the p_idx/n_idx optimisation to avoid testing all eight AABB corners.
+    /// The @p fr_idx hint indicates which plane to test first (typically the plane
+    /// that rejected the previous object, for early-out coherence).
+    ///
+    /// @param vAABBv1   Minimum corner of the AABB in world space.
+    /// @param vAABBv2   Maximum corner of the AABB in world space.
+    /// @param fr_idx    [in/out] Index of the plane to prioritise; updated to the
+    ///                  rejecting plane on @c FRT_OUT.
+    /// @param in_mask   Bitmask of planes to test.
+    /// @param out_mask  [out] Bitmask of planes the AABB straddles.
+    /// @return @c FRT_OUT, @c FRT_IN_OUT, or @c FRT_IN.
     inline eFrustumTest    AABBvsFrustumTest   (const D3DXVECTOR3 &vAABBv1, const D3DXVECTOR3 &vAABBv2, BYTE &fr_idx, int in_mask, int &out_mask);
 
 };
