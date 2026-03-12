@@ -486,7 +486,10 @@ void DebugRender::AddWireCylinder( const D3DXVECTOR3 &bottom, const D3DXVECTOR3 
 {
     if ( tessellation < 3 ) tessellation = 3;
     D3DXVECTOR3 axis = top - bottom;
-    D3DXVec3Normalize( &axis, &axis );
+    const float axisLen = D3DXVec3Length( &axis );
+    if ( axisLen < 1e-6f )
+        return;
+    axis /= axisLen;
     D3DXVECTOR3 t1, t2;
     s_MakeBasis( axis, t1, t2 );
     s_AddWireCylinderGeometry( this, bottom, top, t1, t2, radius, color, tessellation );
@@ -496,7 +499,10 @@ void DebugRender::AddCylinder( const D3DXVECTOR3 &bottom, const D3DXVECTOR3 &top
 {
     if ( tessellation < 3 ) tessellation = 3;
     D3DXVECTOR3 axis = top - bottom;
-    D3DXVec3Normalize( &axis, &axis );
+    const float axisLen = D3DXVec3Length( &axis );
+    if ( axisLen < 1e-6f )
+        return;
+    axis /= axisLen;
     D3DXVECTOR3 t1, t2;
     s_MakeBasis( axis, t1, t2 );
     s_AddFilledCylinderGeometry( this, bottom, top, t1, t2, radius, color, tessellation );
@@ -509,26 +515,40 @@ void DebugRender::AddCylinder( const D3DXVECTOR3 &bottom, const D3DXVECTOR3 &top
 void DebugRender::AddWireCylinder( const D3DXMATRIX &matrix, float height, float radius, const D3DXCOLOR &color, int tessellation )
 {
     if ( tessellation < 3 ) tessellation = 3;
+    if ( fabsf( height ) < 1e-6f )
+        return;
     D3DXVECTOR3 position( matrix._41, matrix._42, matrix._43 );
     D3DXVECTOR3 yAxis( matrix._21, matrix._22, matrix._23 );
     D3DXVECTOR3 xAxis( matrix._11, matrix._12, matrix._13 );
     D3DXVECTOR3 zAxis( matrix._31, matrix._32, matrix._33 );
-    D3DXVec3Normalize( &yAxis, &yAxis );
-    D3DXVec3Normalize( &xAxis, &xAxis );
-    D3DXVec3Normalize( &zAxis, &zAxis );
+    const float yLen = D3DXVec3Length( &yAxis );
+    const float xLen = D3DXVec3Length( &xAxis );
+    const float zLen = D3DXVec3Length( &zAxis );
+    if ( yLen < 1e-6f || xLen < 1e-6f || zLen < 1e-6f )
+        return;
+    yAxis /= yLen;
+    xAxis /= xLen;
+    zAxis /= zLen;
     s_AddWireCylinderGeometry( this, position, position + yAxis * height, xAxis, zAxis, radius, color, tessellation );
 }
 
 void DebugRender::AddCylinder( const D3DXMATRIX &matrix, float height, float radius, const D3DXCOLOR &color, int tessellation )
 {
     if ( tessellation < 3 ) tessellation = 3;
+    if ( fabsf( height ) < 1e-6f )
+        return;
     D3DXVECTOR3 position( matrix._41, matrix._42, matrix._43 );
     D3DXVECTOR3 yAxis( matrix._21, matrix._22, matrix._23 );
     D3DXVECTOR3 xAxis( matrix._11, matrix._12, matrix._13 );
     D3DXVECTOR3 zAxis( matrix._31, matrix._32, matrix._33 );
-    D3DXVec3Normalize( &yAxis, &yAxis );
-    D3DXVec3Normalize( &xAxis, &xAxis );
-    D3DXVec3Normalize( &zAxis, &zAxis );
+    const float yLen = D3DXVec3Length( &yAxis );
+    const float xLen = D3DXVec3Length( &xAxis );
+    const float zLen = D3DXVec3Length( &zAxis );
+    if ( yLen < 1e-6f || xLen < 1e-6f || zLen < 1e-6f )
+        return;
+    yAxis /= yLen;
+    xAxis /= xLen;
+    zAxis /= zLen;
     s_AddFilledCylinderGeometry( this, position, position + yAxis * height, xAxis, zAxis, radius, color, tessellation );
 }
 
