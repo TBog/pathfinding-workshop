@@ -487,7 +487,7 @@ void DebugRender::AddWireCylinder( const D3DXVECTOR3 &bottom, const D3DXVECTOR3 
     if ( tessellation < 3 ) tessellation = 3;
     D3DXVECTOR3 axis = top - bottom;
     const float axisLen = D3DXVec3Length( &axis );
-    if ( axisLen < 1e-6f )
+    if ( axisLen < FLT_EPSILON )
         return;
     axis /= axisLen;
     D3DXVECTOR3 t1, t2;
@@ -500,7 +500,7 @@ void DebugRender::AddCylinder( const D3DXVECTOR3 &bottom, const D3DXVECTOR3 &top
     if ( tessellation < 3 ) tessellation = 3;
     D3DXVECTOR3 axis = top - bottom;
     const float axisLen = D3DXVec3Length( &axis );
-    if ( axisLen < 1e-6f )
+    if ( axisLen < FLT_EPSILON )
         return;
     axis /= axisLen;
     D3DXVECTOR3 t1, t2;
@@ -515,7 +515,7 @@ void DebugRender::AddCylinder( const D3DXVECTOR3 &bottom, const D3DXVECTOR3 &top
 void DebugRender::AddWireCylinder( const D3DXMATRIX &matrix, float height, float radius, const D3DXCOLOR &color, int tessellation )
 {
     if ( tessellation < 3 ) tessellation = 3;
-    if ( fabsf( height ) < 1e-6f )
+    if ( fabsf( height ) < FLT_EPSILON )
         return;
     D3DXVECTOR3 position( matrix._41, matrix._42, matrix._43 );
     D3DXVECTOR3 yAxis( matrix._21, matrix._22, matrix._23 );
@@ -524,7 +524,7 @@ void DebugRender::AddWireCylinder( const D3DXMATRIX &matrix, float height, float
     const float yLen = D3DXVec3Length( &yAxis );
     const float xLen = D3DXVec3Length( &xAxis );
     const float zLen = D3DXVec3Length( &zAxis );
-    if ( yLen < 1e-6f || xLen < 1e-6f || zLen < 1e-6f )
+    if ( yLen < FLT_EPSILON || xLen < FLT_EPSILON || zLen < FLT_EPSILON )
         return;
     yAxis /= yLen;
     xAxis /= xLen;
@@ -535,7 +535,7 @@ void DebugRender::AddWireCylinder( const D3DXMATRIX &matrix, float height, float
 void DebugRender::AddCylinder( const D3DXMATRIX &matrix, float height, float radius, const D3DXCOLOR &color, int tessellation )
 {
     if ( tessellation < 3 ) tessellation = 3;
-    if ( fabsf( height ) < 1e-6f )
+    if ( fabsf( height ) < FLT_EPSILON )
         return;
     D3DXVECTOR3 position( matrix._41, matrix._42, matrix._43 );
     D3DXVECTOR3 yAxis( matrix._21, matrix._22, matrix._23 );
@@ -544,7 +544,7 @@ void DebugRender::AddCylinder( const D3DXMATRIX &matrix, float height, float rad
     const float yLen = D3DXVec3Length( &yAxis );
     const float xLen = D3DXVec3Length( &xAxis );
     const float zLen = D3DXVec3Length( &zAxis );
-    if ( yLen < 1e-6f || xLen < 1e-6f || zLen < 1e-6f )
+    if ( yLen < FLT_EPSILON || xLen < FLT_EPSILON || zLen < FLT_EPSILON )
         return;
     yAxis /= yLen;
     xAxis /= xLen;
