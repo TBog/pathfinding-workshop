@@ -17,6 +17,7 @@
 #include "Render\TexturesManager.h"
 #include "Render\ObjectsManager.h"
 #include "Render\EntitiesManager.h"
+#include "Render\DebugRender.h"
 #include "Pathfinding\PathfindingWorkshopManager.h"
 
 #include "Render\PostProcess.h"
@@ -493,11 +494,14 @@ void InitializeApp()
 	TexturesManager::Create();
 	ObjectsManager::Create();
 	EntitiesManager::Create();
+	DebugRender::Create();
 	PathfindingWorkshopManager::Create();
 
 	InitializeCamera();
 
 	g_renderManager->CreateDevice(g_hWnd);
+
+	g_debugRender->CreateResources();
 
 	CreateD3DResources();
 
@@ -512,12 +516,15 @@ void DestroyApp()
 {
 	DeleteD3DResources();
 
+	g_debugRender->DestroyResources();
+
 	g_renderManager->DestroyDevice();
 
 	EntitiesManager::Destroy();
 	ObjectsManager::Destroy();
 	TexturesManager::Destroy();
 	RenderManager::Destroy();
+	DebugRender::Destroy();
 	PathfindingWorkshopManager::Destroy();
 
 	SAFE_DELETE(g_input);
@@ -673,6 +680,10 @@ void Render(float dt)
 
 	// render the clouds
 	g_renderManager->GetClouds()->Render(g_HDRRenderTarget, g_depthBuffer);
+
+	// render debug geometry and pathfinding workshop
+	g_pathfindingWorkshopManager->Render();
+	g_debugRender->Flush();
 
 	// set back the back buffer render target
 	g_renderManager->SetBackBufferRenderTarget();
