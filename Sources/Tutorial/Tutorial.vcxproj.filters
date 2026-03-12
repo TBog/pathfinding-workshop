@@ -122,6 +122,9 @@
     <ClInclude Include="Render\Clouds.h">
       <Filter>Render</Filter>
     </ClInclude>
+    <ClInclude Include="Render\DebugRender.h">
+      <Filter>Render</Filter>
+    </ClInclude>
     <ClInclude Include="Render\PostProcess.h">
       <Filter>Render</Filter>
     </ClInclude>
@@ -209,6 +212,9 @@
     <ClCompile Include="Render\Clouds.cpp">
       <Filter>Render</Filter>
     </ClCompile>
+    <ClCompile Include="Render\DebugRender.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
     <ClCompile Include="Render\PostProcess.cpp">
       <Filter>Render</Filter>
     </ClCompile>
@@ -234,6 +240,12 @@
       <Filter>__Shaders__</Filter>
     </FxCompile>
     <FxCompile Include="..\..\bin\Shaders\FullScreenQuad_VS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\DebugRender_PS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\DebugRender_VS.fx">
       <Filter>__Shaders__</Filter>
     </FxCompile>
     <FxCompile Include="..\..\bin\Shaders\Cube_PS.fx">

@@ -17,6 +17,7 @@
 #include "Render\TexturesManager.h"
 #include "Render\ObjectsManager.h"
 #include "Render\EntitiesManager.h"
+#include "Render\DebugRender.h"
 #include "Pathfinding\PathfindingWorkshopManager.h"
 
 #include "Render\PostProcess.h"
@@ -493,11 +494,14 @@ void InitializeApp()
 	TexturesManager::Create();
 	ObjectsManager::Create();
 	EntitiesManager::Create();
+	DebugRender::Create();
 	PathfindingWorkshopManager::Create();
 
 	InitializeCamera();
 
 	g_renderManager->CreateDevice(g_hWnd);
+
+	g_debugRender->CreateResources();
 
 	CreateD3DResources();
 
@@ -512,12 +516,15 @@ void DestroyApp()
 {
 	DeleteD3DResources();
 
+	g_debugRender->DestroyResources();
+
 	g_renderManager->DestroyDevice();
 
 	EntitiesManager::Destroy();
 	ObjectsManager::Destroy();
 	TexturesManager::Destroy();
 	RenderManager::Destroy();
+	DebugRender::Destroy();
 	PathfindingWorkshopManager::Destroy();
 
 	SAFE_DELETE(g_input);
@@ -674,11 +681,18 @@ void Render(float dt)
 	// render the clouds
 	g_renderManager->GetClouds()->Render(g_HDRRenderTarget, g_depthBuffer);
 
+	// build debug geometry from pathfinding workshop (adds to DynVec, no GPU work yet)
+	g_pathfindingWorkshopManager->Render();
+
 	// set back the back buffer render target
 	g_renderManager->SetBackBufferRenderTarget();
 
 	// apply post process
 	g_renderManager->GetPostProcess()->Render(g_HDRRenderTarget, g_depthBuffer);
+
+	// flush debug geometry on top of the post-processed image (LDR back buffer)
+	// so colors are not scaled down by the HDR tone-mapping pass
+	g_debugRender->Flush();
 
 
 	// present
