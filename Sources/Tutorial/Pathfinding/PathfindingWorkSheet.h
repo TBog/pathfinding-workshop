@@ -27,10 +27,12 @@ public:
 	// Exercises
 	//---------------------------------------------------------------
 
-	// Line Side Exercise   
+	// Exercise 1: Signed Area
+
 	virtual float SignedArea(Vector2 p1, Vector2 p2, Vector2 p3) = 0;
-
-	// Line Side Exercise
 	virtual bool IsLeft(Vector2 p1, Vector2 p2, Vector2 p3) = 0;
+	virtual bool IsCollinear(Vector2 p1, Vector2 p2, Vector2 p3) = 0;
 
+	// Exercise 2: Inside Triangle
+	virtual bool InsideTriangle(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4) = 0;
 };

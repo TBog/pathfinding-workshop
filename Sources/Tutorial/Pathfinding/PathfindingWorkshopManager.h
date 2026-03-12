@@ -5,7 +5,6 @@
 
 #include "..\Utils\DynVec.h"
 
-class Entity;
 class PathfindingWorkSheet;
 
 //===================================================================
@@ -27,27 +26,25 @@ public:
 	//---------------------------------------------------------------
 	static PathfindingWorkshopManager* Get() { return s_Instance; }
 
-	static void                     Create();
-	static void                     Destroy();
+	static void Create();
+	static void Destroy();
 
 	//---------------------------------------------------------------
 	//	MAIN FUNCTIONS
 	//---------------------------------------------------------------
-	void                            DeleteAllEntities();
-	void                            Update(float dt);
-	void                            Render();
-
-	const DynVec<Entity*>& GetEntitiesList() const { return m_entitiesList; }
+	void Update(float dt);
+	void Render();
 
 protected:
-	static PathfindingWorkshopManager* s_Instance;
 
-	DynVec<Entity*>                 m_entitiesList;
+	void _RunSignedAreaExercise();
+
+	static PathfindingWorkshopManager* s_Instance;
 
 	PathfindingWorkSheet* m_UserWorkSheet{ nullptr };
 	PathfindingWorkSheet* m_ControlWorkSheet{ nullptr };
 };
 
-#define g_pathfindingWorkshopManager           PathfindingWorkshopManager::Get()
+#define g_pathfindingWorkshopManager PathfindingWorkshopManager::Get()
 
 #endif // __PATHFINDINGWORKSHOPMANAGER_H__

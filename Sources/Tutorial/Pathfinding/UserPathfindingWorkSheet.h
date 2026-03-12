@@ -21,4 +21,13 @@ public:
 		return false;
 	}
 
+	bool IsCollinear(Vector2 p1, Vector2 p2, Vector2 p3) override
+	{
+		return false;
+	}
+
+	bool InsideTriangle(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4) override
+	{
+		return false;
+	}
 };
