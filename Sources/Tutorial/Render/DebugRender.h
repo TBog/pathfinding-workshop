@@ -37,6 +37,17 @@ public:
     void                            AddTriangle             ( const D3DXVECTOR3 &v0, const D3DXVECTOR3 &v1, const D3DXVECTOR3 &v2, const D3DXCOLOR &color );
     void                            AddQuad                 ( const D3DXVECTOR3 &v0, const D3DXVECTOR3 &v1, const D3DXVECTOR3 &v2, const D3DXVECTOR3 &v3, const D3DXCOLOR &color );
 
+    // Screen-space text at pixel coordinates (x, y)
+    void                            AddText                 ( int x, int y, const wchar_t *text, const D3DXCOLOR &color );
+
+    // World-space text: the 3D position is projected to screen; the text is always camera-facing
+    void                            AddText                 ( const D3DXVECTOR3 &worldPos, const wchar_t *text, const D3DXCOLOR &color );
+
+    // World-space text with a full transform matrix: position is taken from the matrix translation.
+    // Pass a billboard matrix (built from camera axes) for camera-facing text, or any other
+    // world matrix to orient the label in the scene (e.g. lying flat on a wall).
+    void                            AddText                 ( const D3DXMATRIX &worldMatrix, const wchar_t *text, const D3DXCOLOR &color );
+
     // Sphere (wire and filled), tessellation controls slice/stack detail (default 16 => 16 slices, 8 stacks)
     void                            AddWireSphere           ( const D3DXVECTOR3 &center, float radius, const D3DXCOLOR &color, int tessellation = 16 );
     void                            AddSphere               ( const D3DXVECTOR3 &center, float radius, const D3DXCOLOR &color, int tessellation = 16 );
@@ -73,11 +84,23 @@ protected:
         D3DXCOLOR               m_color;
     };
 
+    // Maximum character count for a single text label (including null terminator)
+    static const int            kTextMaxLen = 256;
+
+    struct DebugTextEntry
+    {
+        wchar_t                 m_text[kTextMaxLen];
+        int                     m_screenX;
+        int                     m_screenY;
+        D3DXCOLOR               m_color;
+    };
+
     //---------------------------------------------------------------
     //	PROTECTED FUNCTIONS
     //---------------------------------------------------------------
     void                            _FlushLines             ( );
     void                            _FlushTriangles         ( );
+    void                            _FlushText              ( );
 
     HRESULT                         _CreateOrGrowVB         ( ID3D11Buffer **ppVB, int &capacity, int neededCapacity );
 
@@ -94,6 +117,19 @@ protected:
     ID3D11Buffer*                   m_triangleVB;
     ID3D11InputLayout*              m_vertexLayout;
     ID3D11RasterizerState*          m_noCullRasterState;
+
+    // GDI resources used to rasterise text glyphs into a CPU-side bitmap
+    HDC                             m_textHDC;
+    HBITMAP                         m_textBitmap;
+    HFONT                           m_textFont;
+    BYTE*                           m_textBitmapBits;   // raw pixel data owned by m_textBitmap
+
+    // D3D11 dynamic texture + SRV for the per-frame text overlay
+    ID3D11Texture2D*                m_textOverlayTex;
+    ID3D11ShaderResourceView*       m_textOverlaySRV;
+
+    // Pending text entries (accumulated between Flush calls)
+    DynVec<DebugTextEntry>          m_textEntries;
 };
 
 #define g_debugRender               DebugRender::Get()

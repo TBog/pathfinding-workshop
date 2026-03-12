@@ -3,6 +3,7 @@
 #include "DebugRender.h"
 
 #include "..\Utils\Utils.h"
+#include "..\Utils\Camera.h"
 #include "..\Utils\Shader.h"
 
 #include "RenderManager.h"
@@ -15,6 +16,11 @@
 //--------------------------------------------------------------------------------------
 static ShaderVS s_DebugRenderVS(L"Shaders/DebugRender_VS.fx");
 static ShaderPS s_DebugRenderPS(L"Shaders/DebugRender_PS.fx");
+
+// Text-overlay compositing reuses the generic fullscreen-quad VS together with a
+// dedicated PS that point-samples the CPU-uploaded text texture.
+static ShaderVS s_DebugTextVS(L"Shaders/FullScreenQuad_VS.fx");
+static ShaderPS s_DebugTextPS(L"Shaders/DebugText_PS.fx");
 
 //--------------------------------------------------------------------------------------
 // Math constants
@@ -166,6 +172,13 @@ DebugRender::DebugRender()
     , m_triangleVB          ( NULL )
     , m_vertexLayout        ( NULL )
     , m_noCullRasterState   ( NULL )
+    , m_textHDC             ( NULL )
+    , m_textBitmap          ( NULL )
+    , m_textFont            ( NULL )
+    , m_textBitmapBits      ( NULL )
+    , m_textOverlayTex      ( NULL )
+    , m_textOverlaySRV      ( NULL )
+    , m_textEntries         ( 64, 64 )
 {
 }
 
@@ -239,6 +252,88 @@ HRESULT DebugRender::CreateResources()
         }
     }
 
+    // --- Text overlay resources ---
+    {
+        const int width  = g_renderManager->GetResolutionWidth();
+        const int height = g_renderManager->GetResolutionHeight();
+
+        // Create an off-screen GDI DC + 32-bit top-down DIBSection.
+        // GDI stores pixels as B,G,R,reserved (little-endian DWORD: 0x00RRGGBB).
+        m_textHDC = CreateCompatibleDC(NULL);
+        if (!m_textHDC)
+        {
+            myAssert(false, L"DebugRender::CreateResources() - CreateCompatibleDC failed!");
+            return E_FAIL;
+        }
+
+        BITMAPINFO bmi = {};
+        bmi.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
+        bmi.bmiHeader.biWidth       = width;
+        bmi.bmiHeader.biHeight      = -height;  // negative = top-down
+        bmi.bmiHeader.biPlanes      = 1;
+        bmi.bmiHeader.biBitCount    = 32;
+        bmi.bmiHeader.biCompression = BI_RGB;
+
+        m_textBitmap = CreateDIBSection(m_textHDC, &bmi, DIB_RGB_COLORS,
+                                        reinterpret_cast<void**>(&m_textBitmapBits), NULL, 0);
+        if (!m_textBitmap)
+        {
+            myAssert(false, L"DebugRender::CreateResources() - CreateDIBSection failed!");
+            return E_FAIL;
+        }
+        SelectObject(m_textHDC, m_textBitmap);
+
+        // 14-pixel-height, non-anti-aliased Arial for crisp debug text.
+        m_textFont = CreateFontW(
+            -14, 0, 0, 0,
+            FW_NORMAL,
+            FALSE, FALSE, FALSE,
+            DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+            NONANTIALIASED_QUALITY,
+            DEFAULT_PITCH | FF_DONTCARE,
+            L"Arial");
+        if (!m_textFont)
+        {
+            myAssert(false, L"DebugRender::CreateResources() - CreateFontW failed!");
+            return E_FAIL;
+        }
+        SelectObject(m_textHDC, m_textFont);
+        SetBkMode(m_textHDC, TRANSPARENT);
+
+        // D3D11 dynamic RGBA texture – updated from the GDI bitmap every Flush.
+        D3D11_TEXTURE2D_DESC texDesc = {};
+        texDesc.Width              = static_cast<UINT>(width);
+        texDesc.Height             = static_cast<UINT>(height);
+        texDesc.MipLevels          = 1;
+        texDesc.ArraySize          = 1;
+        texDesc.Format             = DXGI_FORMAT_R8G8B8A8_UNORM;
+        texDesc.SampleDesc.Count   = 1;
+        texDesc.Usage              = D3D11_USAGE_DYNAMIC;
+        texDesc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
+        texDesc.CPUAccessFlags     = D3D11_CPU_ACCESS_WRITE;
+
+        hr = device->CreateTexture2D(&texDesc, NULL, &m_textOverlayTex);
+        if (FAILED(hr))
+        {
+            myAssert(false, L"DebugRender::CreateResources() - CreateTexture2D (text) failed!");
+            return hr;
+        }
+
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.Format                    = DXGI_FORMAT_R8G8B8A8_UNORM;
+        srvDesc.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels       = 1;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+
+        hr = device->CreateShaderResourceView(m_textOverlayTex, &srvDesc, &m_textOverlaySRV);
+        if (FAILED(hr))
+        {
+            myAssert(false, L"DebugRender::CreateResources() - CreateShaderResourceView (text) failed!");
+            return hr;
+        }
+    }
+
     return S_OK;
 }
 
@@ -252,6 +347,13 @@ void DebugRender::DestroyResources()
     m_lineVBCapacity = 0;
     SAFE_RELEASE(m_triangleVB);
     m_triangleVBCapacity = 0;
+
+    // Text overlay resources
+    SAFE_RELEASE(m_textOverlaySRV);
+    SAFE_RELEASE(m_textOverlayTex);
+    if (m_textFont)   { DeleteObject(m_textFont);   m_textFont   = NULL; }
+    if (m_textBitmap) { DeleteObject(m_textBitmap); m_textBitmap = NULL; m_textBitmapBits = NULL; }
+    if (m_textHDC)    { DeleteDC(m_textHDC);        m_textHDC    = NULL; }
 }
 
 //-------------------------------------------------------------------
@@ -610,29 +712,216 @@ void DebugRender::AddCylinder( const D3DXMATRIX &matrix, float height, float rad
 }
 
 //-------------------------------------------------------------------
+// AddText – screen-space pixel coordinates
+//-------------------------------------------------------------------
+
+void DebugRender::AddText( int x, int y, const wchar_t *text, const D3DXCOLOR &color )
+{
+    if ( !text || !text[0] )
+        return;
+
+    DebugTextEntry entry;
+    wcsncpy_s( entry.m_text, text, _TRUNCATE );
+    entry.m_screenX = x;
+    entry.m_screenY = y;
+    entry.m_color   = color;
+    m_textEntries.Add( entry );
+}
+
+//-------------------------------------------------------------------
+// AddText – 3D world position projected to screen
+//-------------------------------------------------------------------
+
+void DebugRender::AddText( const D3DXVECTOR3 &worldPos, const wchar_t *text, const D3DXCOLOR &color )
+{
+    if ( !text || !text[0] )
+        return;
+
+    const Camera *camera = g_renderManager->GetCamera();
+
+    // Build combined view-projection matrix
+    D3DXMATRIX viewProj;
+    D3DXMatrixMultiply( &viewProj, &camera->GetViewMatrix(), &camera->GetProjMatrix() );
+
+    // Transform world position to homogeneous clip space
+    D3DXVECTOR4 clipPos;
+    D3DXVec3Transform( &clipPos, &worldPos, &viewProj );
+
+    // Discard points behind or on the camera plane
+    if ( clipPos.w <= 0.0f )
+        return;
+
+    const float invW = 1.0f / clipPos.w;
+    const float ndcX = clipPos.x * invW;
+    const float ndcY = clipPos.y * invW;
+    const float ndcZ = clipPos.z * invW;
+
+    // Discard points outside the view frustum
+    if ( ndcZ < 0.0f || ndcZ > 1.0f ) return;
+    if ( ndcX < -1.0f || ndcX > 1.0f ) return;
+    if ( ndcY < -1.0f || ndcY > 1.0f ) return;
+
+    // NDC -> screen pixels  (DirectX NDC: x in [-1,1] left-to-right, y in [-1,1] bottom-to-top)
+    const int screenX = static_cast<int>( ( ndcX * 0.5f + 0.5f ) * g_renderManager->GetResolutionWidth() );
+    const int screenY = static_cast<int>( (-ndcY * 0.5f + 0.5f ) * g_renderManager->GetResolutionHeight() );
+
+    AddText( screenX, screenY, text, color );
+}
+
+//-------------------------------------------------------------------
+// AddText – 3D world matrix (position from translation row/column).
+// Use this overload to pass a billboard matrix for camera-facing text
+// or any other transform to orient the label in the scene.
+//-------------------------------------------------------------------
+
+void DebugRender::AddText( const D3DXMATRIX &worldMatrix, const wchar_t *text, const D3DXCOLOR &color )
+{
+    // Extract the world-space position from the matrix translation (row 4 in D3DX row-major)
+    const D3DXVECTOR3 worldPos( worldMatrix._41, worldMatrix._42, worldMatrix._43 );
+    AddText( worldPos, text, color );
+}
+
+//-------------------------------------------------------------------
+// _FlushText – rasterise all queued text entries into a GDI bitmap,
+//              upload to a D3D11 texture, then alpha-blend over the scene.
+//-------------------------------------------------------------------
+
+void DebugRender::_FlushText()
+{
+    const int count = m_textEntries.GetSize();
+    if ( count == 0 )
+        return;
+
+    if ( !m_textHDC || !m_textBitmapBits || !m_textOverlayTex || !m_textOverlaySRV )
+    {
+        m_textEntries.Clear();
+        return;
+    }
+
+    const int width  = g_renderManager->GetResolutionWidth();
+    const int height = g_renderManager->GetResolutionHeight();
+
+    // 1. Clear the GDI bitmap to fully transparent (all bytes = 0).
+    memset( m_textBitmapBits, 0, static_cast<size_t>( width ) * height * 4 );
+
+    // 2. Render each queued text entry with GDI.
+    for ( int i = 0; i < count; i++ )
+    {
+        const DebugTextEntry &entry = m_textEntries[i];
+
+        // GDI COLORREF is 0x00BBGGRR (red in the low byte).
+        const COLORREF gdiColor = RGB(
+            static_cast<BYTE>( entry.m_color.r * 255.0f ),
+            static_cast<BYTE>( entry.m_color.g * 255.0f ),
+            static_cast<BYTE>( entry.m_color.b * 255.0f ) );
+        SetTextColor( m_textHDC, gdiColor );
+
+        RECT rc = { entry.m_screenX, entry.m_screenY, width, height };
+        DrawTextW( m_textHDC, entry.m_text, -1, &rc, DT_NOCLIP | DT_LEFT );
+    }
+
+    // 3. Post-process the bitmap: convert GDI BGR pixels to D3D11 RGBA and set alpha.
+    //    GDI writes to the B,G,R bytes and leaves the reserved byte at 0.
+    //    As a little-endian DWORD each pixel is:  0x00RRGGBB  (B at byte 0).
+    //    D3D11 DXGI_FORMAT_R8G8B8A8_UNORM expects: 0xAABBGGRR  (R at byte 0).
+    //    We swap R<->B and set A=255 for any painted pixel.
+    DWORD *pixels = reinterpret_cast<DWORD *>( m_textBitmapBits );
+    const int pixelCount = width * height;
+    for ( int i = 0; i < pixelCount; i++ )
+    {
+        const DWORD p = pixels[i];
+        if ( p & 0x00FFFFFF )   // at least one of B/G/R is non-zero → painted by GDI
+        {
+            const BYTE b = static_cast<BYTE>( ( p >>  0 ) & 0xFF );  // GDI blue
+            const BYTE g = static_cast<BYTE>( ( p >>  8 ) & 0xFF );  // GDI green
+            const BYTE r = static_cast<BYTE>( ( p >> 16 ) & 0xFF );  // GDI red
+            // Store as RGBA: R at byte 0, G at byte 1, B at byte 2, A=255 at byte 3
+            pixels[i] = static_cast<DWORD>(r)
+                      | ( static_cast<DWORD>(g) <<  8 )
+                      | ( static_cast<DWORD>(b) << 16 )
+                      | 0xFF000000u;
+        }
+    }
+
+    // 4. Upload the converted bitmap to the D3D11 dynamic texture.
+    ID3D11DeviceContext *d3dContext = g_renderManager->GetDeviceContext();
+
+    D3D11_MAPPED_SUBRESOURCE mapped = {};
+    HRESULT hr = d3dContext->Map( m_textOverlayTex, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped );
+    if ( FAILED(hr) )
+    {
+        myAssert( false, L"DebugRender::_FlushText() - Map failed!" );
+        m_textEntries.Clear();
+        return;
+    }
+
+    // Copy row by row to account for the GPU row pitch which may differ from width*4.
+    const BYTE *srcRow = m_textBitmapBits;
+          BYTE *dstRow = reinterpret_cast<BYTE *>( mapped.pData );
+    const int   srcPitch = width * 4;
+    for ( int row = 0; row < height; row++ )
+    {
+        memcpy( dstRow, srcRow, static_cast<size_t>( srcPitch ) );
+        srcRow += srcPitch;
+        dstRow += mapped.RowPitch;
+    }
+    d3dContext->Unmap( m_textOverlayTex, 0 );
+
+    // 5. Composite the text overlay over the current render target using a
+    //    fullscreen alpha-blended quad (SRC_ALPHA / INV_SRC_ALPHA).
+    float blendFactor[4] = { 0, 0, 0, 0 };
+    d3dContext->OMSetBlendState( g_renderManager->GetBlendEnabledState(), blendFactor, 0xFFFFFFFF );
+    d3dContext->OMSetDepthStencilState( g_renderManager->GetNoDepthTestAndNoWriteState(), 0 );
+    d3dContext->RSSetState( g_renderManager->GetCullRasterState() );
+
+    s_DebugTextVS.Set();
+    s_DebugTextPS.Set();
+
+    d3dContext->PSSetShaderResources( 0, 1, &m_textOverlaySRV );
+    ID3D11SamplerState *samPoint = g_renderManager->GetSamPoint();
+    d3dContext->PSSetSamplers( 0, 1, &samPoint );
+
+    g_renderManager->GetQuadMesh()->Draw();
+
+    // Unbind the SRV so it is not left bound as both input and (potential future) output.
+    ID3D11ShaderResourceView *nullSRV = NULL;
+    d3dContext->PSSetShaderResources( 0, 1, &nullSRV );
+
+    m_textEntries.Clear();
+}
+
+//-------------------------------------------------------------------
 
 void DebugRender::Flush()
 {
-    if (m_lineVertices.GetSize() == 0 && m_triangleVertices.GetSize() == 0)
+    const bool hasGeometry = m_lineVertices.GetSize() > 0 || m_triangleVertices.GetSize() > 0;
+    const bool hasText     = m_textEntries.GetSize() > 0;
+
+    if ( !hasGeometry && !hasText )
         return;
 
     ID3D11DeviceContext* d3dContext = g_renderManager->GetDeviceContext();
 
-    // Set render states: blend enabled, depth test but no depth write, no cull
-    float blendFactor[4] = { 0, 0, 0, 0 };
-    d3dContext->OMSetBlendState(g_renderManager->GetBlendEnabledState(), blendFactor, 0xFFFFFFFF);
-    d3dContext->OMSetDepthStencilState(g_renderManager->GetNoDepthWriteState(), 0);
-    d3dContext->RSSetState(m_noCullRasterState);
+    if ( hasGeometry )
+    {
+        // Set render states: blend enabled, depth test but no depth write, no cull
+        float blendFactor[4] = { 0, 0, 0, 0 };
+        d3dContext->OMSetBlendState(g_renderManager->GetBlendEnabledState(), blendFactor, 0xFFFFFFFF);
+        d3dContext->OMSetDepthStencilState(g_renderManager->GetNoDepthWriteState(), 0);
+        d3dContext->RSSetState(m_noCullRasterState);
 
-    // Set shaders
-    s_DebugRenderVS.Set();
-    s_DebugRenderPS.Set();
+        // Set shaders
+        s_DebugRenderVS.Set();
+        s_DebugRenderPS.Set();
 
-    // Set input layout
-    d3dContext->IASetInputLayout(m_vertexLayout);
+        // Set input layout
+        d3dContext->IASetInputLayout(m_vertexLayout);
 
-    _FlushLines();
-    _FlushTriangles();
+        _FlushLines();
+        _FlushTriangles();
+    }
+
+    _FlushText();
 }
 
 //-------------------------------------------------------------------
