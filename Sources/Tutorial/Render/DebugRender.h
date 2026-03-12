@@ -3,6 +3,8 @@
 #ifndef __DEBUGRENDER_H__
 #define __DEBUGRENDER_H__
 
+#include "..\Utils\DynVec.h"
+
 //===================================================================
 //	CLASS DebugRender
 //===================================================================
@@ -53,17 +55,16 @@ protected:
     void                            _FlushLines             ( );
     void                            _FlushTriangles         ( );
 
+    HRESULT                         _CreateOrGrowVB         ( ID3D11Buffer **ppVB, int &capacity, int neededCapacity );
+
 protected:
     static DebugRender*             s_Instance;
 
-    static const int                MAX_LINE_VERTICES       = 4096;
-    static const int                MAX_TRIANGLE_VERTICES   = 8192;
+    DynVec<DebugVertex>             m_lineVertices;
+    int                             m_lineVBCapacity;
 
-    DebugVertex                     m_lineVertices[MAX_LINE_VERTICES];
-    int                             m_lineVertexCount;
-
-    DebugVertex                     m_triangleVertices[MAX_TRIANGLE_VERTICES];
-    int                             m_triangleVertexCount;
+    DynVec<DebugVertex>             m_triangleVertices;
+    int                             m_triangleVBCapacity;
 
     ID3D11Buffer*                   m_lineVB;
     ID3D11Buffer*                   m_triangleVB;

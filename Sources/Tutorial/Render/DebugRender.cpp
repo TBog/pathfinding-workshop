@@ -18,8 +18,10 @@ static ShaderPS s_DebugRenderPS(L"Shaders/DebugRender_PS.fx");
 DebugRender* DebugRender::s_Instance = NULL;
 
 DebugRender::DebugRender()
-    : m_lineVertexCount     ( 0 )
-    , m_triangleVertexCount ( 0 )
+    : m_lineVertices        ( 512, 512 )
+    , m_lineVBCapacity      ( 0 )
+    , m_triangleVertices    ( 1024, 1024 )
+    , m_triangleVBCapacity  ( 0 )
     , m_lineVB              ( NULL )
     , m_triangleVB          ( NULL )
     , m_vertexLayout        ( NULL )
@@ -76,40 +78,6 @@ HRESULT DebugRender::CreateResources()
         return hr;
     }
 
-    // Dynamic vertex buffer for lines
-    {
-        D3D11_BUFFER_DESC desc;
-        desc.Usage          = D3D11_USAGE_DYNAMIC;
-        desc.BindFlags      = D3D11_BIND_VERTEX_BUFFER;
-        desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-        desc.MiscFlags      = 0;
-        desc.ByteWidth      = sizeof(DebugVertex) * MAX_LINE_VERTICES;
-
-        hr = device->CreateBuffer(&desc, NULL, &m_lineVB);
-        if (FAILED(hr))
-        {
-            myAssert(false, L"DebugRender::CreateResources() - CreateBuffer (lines) failed!");
-            return hr;
-        }
-    }
-
-    // Dynamic vertex buffer for triangles
-    {
-        D3D11_BUFFER_DESC desc;
-        desc.Usage          = D3D11_USAGE_DYNAMIC;
-        desc.BindFlags      = D3D11_BIND_VERTEX_BUFFER;
-        desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-        desc.MiscFlags      = 0;
-        desc.ByteWidth      = sizeof(DebugVertex) * MAX_TRIANGLE_VERTICES;
-
-        hr = device->CreateBuffer(&desc, NULL, &m_triangleVB);
-        if (FAILED(hr))
-        {
-            myAssert(false, L"DebugRender::CreateResources() - CreateBuffer (triangles) failed!");
-            return hr;
-        }
-    }
-
     // No-cull rasterizer state for debug geometry
     {
         D3D11_RASTERIZER_DESC rsDesc;
@@ -141,43 +109,68 @@ void DebugRender::DestroyResources()
     SAFE_RELEASE(m_noCullRasterState);
     SAFE_RELEASE(m_vertexLayout);
     SAFE_RELEASE(m_lineVB);
+    m_lineVBCapacity = 0;
     SAFE_RELEASE(m_triangleVB);
+    m_triangleVBCapacity = 0;
+}
+
+//-------------------------------------------------------------------
+
+HRESULT DebugRender::_CreateOrGrowVB(ID3D11Buffer** ppVB, int& capacity, int neededCapacity)
+{
+    if (neededCapacity <= capacity)
+        return S_OK;
+
+    SAFE_RELEASE(*ppVB);
+    capacity = 0;
+
+    D3D11_BUFFER_DESC desc;
+    desc.Usage          = D3D11_USAGE_DYNAMIC;
+    desc.BindFlags      = D3D11_BIND_VERTEX_BUFFER;
+    desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    desc.MiscFlags      = 0;
+    desc.ByteWidth      = sizeof(DebugVertex) * neededCapacity;
+
+    HRESULT hr = g_renderManager->GetDevice()->CreateBuffer(&desc, NULL, ppVB);
+    if (FAILED(hr))
+    {
+        myAssert(false, L"DebugRender::_CreateOrGrowVB() - CreateBuffer failed!");
+        return hr;
+    }
+
+    capacity = neededCapacity;
+    return S_OK;
 }
 
 //-------------------------------------------------------------------
 
 void DebugRender::AddLine(const D3DXVECTOR3& start, const D3DXVECTOR3& end, const D3DXCOLOR& color)
 {
-    if (m_lineVertexCount + 2 > MAX_LINE_VERTICES)
-        return;
+    DebugVertex v;
 
-    m_lineVertices[m_lineVertexCount].m_position    = start;
-    m_lineVertices[m_lineVertexCount].m_color       = color;
-    m_lineVertexCount++;
+    v.m_position = start;
+    v.m_color    = color;
+    m_lineVertices.Add(v);
 
-    m_lineVertices[m_lineVertexCount].m_position    = end;
-    m_lineVertices[m_lineVertexCount].m_color       = color;
-    m_lineVertexCount++;
+    v.m_position = end;
+    m_lineVertices.Add(v);
 }
 
 //-------------------------------------------------------------------
 
 void DebugRender::AddTriangle(const D3DXVECTOR3& v0, const D3DXVECTOR3& v1, const D3DXVECTOR3& v2, const D3DXCOLOR& color)
 {
-    if (m_triangleVertexCount + 3 > MAX_TRIANGLE_VERTICES)
-        return;
+    DebugVertex v;
+    v.m_color = color;
 
-    m_triangleVertices[m_triangleVertexCount].m_position    = v0;
-    m_triangleVertices[m_triangleVertexCount].m_color       = color;
-    m_triangleVertexCount++;
+    v.m_position = v0;
+    m_triangleVertices.Add(v);
 
-    m_triangleVertices[m_triangleVertexCount].m_position    = v1;
-    m_triangleVertices[m_triangleVertexCount].m_color       = color;
-    m_triangleVertexCount++;
+    v.m_position = v1;
+    m_triangleVertices.Add(v);
 
-    m_triangleVertices[m_triangleVertexCount].m_position    = v2;
-    m_triangleVertices[m_triangleVertexCount].m_color       = color;
-    m_triangleVertexCount++;
+    v.m_position = v2;
+    m_triangleVertices.Add(v);
 }
 
 //-------------------------------------------------------------------
@@ -192,7 +185,7 @@ void DebugRender::AddQuad(const D3DXVECTOR3& v0, const D3DXVECTOR3& v1, const D3
 
 void DebugRender::Flush()
 {
-    if (m_lineVertexCount == 0 && m_triangleVertexCount == 0)
+    if (m_lineVertices.GetSize() == 0 && m_triangleVertices.GetSize() == 0)
         return;
 
     ID3D11DeviceContext* d3dContext = g_renderManager->GetDeviceContext();
@@ -218,64 +211,76 @@ void DebugRender::Flush()
 
 void DebugRender::_FlushLines()
 {
-    if (m_lineVertexCount == 0)
+    const int count = m_lineVertices.GetSize();
+    if (count == 0)
         return;
+
+    // Grow the GPU buffer if the DynVec has expanded beyond it
+    if (FAILED(_CreateOrGrowVB(&m_lineVB, m_lineVBCapacity, m_lineVertices.GetMaxSize())))
+    {
+        m_lineVertices.Clear();
+        return;
+    }
 
     ID3D11DeviceContext* d3dContext = g_renderManager->GetDeviceContext();
 
-    // Update the line vertex buffer
     D3D11_MAPPED_SUBRESOURCE mapped;
     HRESULT hr = d3dContext->Map(m_lineVB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
     if (FAILED(hr))
     {
         myAssert(false, L"DebugRender::_FlushLines() - Map failed!");
-        m_lineVertexCount = 0;
+        m_lineVertices.Clear();
         return;
     }
-    memcpy(mapped.pData, m_lineVertices, sizeof(DebugVertex) * m_lineVertexCount);
+    memcpy(mapped.pData, m_lineVertices.GetData(), sizeof(DebugVertex) * count);
     d3dContext->Unmap(m_lineVB, 0);
 
-    // Set vertex buffer and topology
     UINT stride = sizeof(DebugVertex);
     UINT offset = 0;
     d3dContext->IASetVertexBuffers(0, 1, &m_lineVB, &stride, &offset);
     d3dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 
-    d3dContext->Draw((UINT)m_lineVertexCount, 0);
+    d3dContext->Draw((UINT)count, 0);
 
-    m_lineVertexCount = 0;
+    m_lineVertices.Clear();
 }
 
 //-------------------------------------------------------------------
 
 void DebugRender::_FlushTriangles()
 {
-    if (m_triangleVertexCount == 0)
+    const int count = m_triangleVertices.GetSize();
+    if (count == 0)
         return;
+
+    // Grow the GPU buffer if the DynVec has expanded beyond it
+    if (FAILED(_CreateOrGrowVB(&m_triangleVB, m_triangleVBCapacity, m_triangleVertices.GetMaxSize())))
+    {
+        m_triangleVertices.Clear();
+        return;
+    }
 
     ID3D11DeviceContext* d3dContext = g_renderManager->GetDeviceContext();
 
-    // Update the triangle vertex buffer
     D3D11_MAPPED_SUBRESOURCE mapped;
     HRESULT hr = d3dContext->Map(m_triangleVB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
     if (FAILED(hr))
     {
         myAssert(false, L"DebugRender::_FlushTriangles() - Map failed!");
-        m_triangleVertexCount = 0;
+        m_triangleVertices.Clear();
         return;
     }
-    memcpy(mapped.pData, m_triangleVertices, sizeof(DebugVertex) * m_triangleVertexCount);
+    memcpy(mapped.pData, m_triangleVertices.GetData(), sizeof(DebugVertex) * count);
     d3dContext->Unmap(m_triangleVB, 0);
 
-    // Set vertex buffer and topology
     UINT stride = sizeof(DebugVertex);
     UINT offset = 0;
     d3dContext->IASetVertexBuffers(0, 1, &m_triangleVB, &stride, &offset);
     d3dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    d3dContext->Draw((UINT)m_triangleVertexCount, 0);
+    d3dContext->Draw((UINT)count, 0);
 
-    m_triangleVertexCount = 0;
+    m_triangleVertices.Clear();
 }
 
 //-------------------------------------------------------------------
