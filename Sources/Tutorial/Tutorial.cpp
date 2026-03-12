@@ -681,15 +681,18 @@ void Render(float dt)
 	// render the clouds
 	g_renderManager->GetClouds()->Render(g_HDRRenderTarget, g_depthBuffer);
 
-	// render debug geometry and pathfinding workshop
+	// build debug geometry from pathfinding workshop (adds to DynVec, no GPU work yet)
 	g_pathfindingWorkshopManager->Render();
-	g_debugRender->Flush();
 
 	// set back the back buffer render target
 	g_renderManager->SetBackBufferRenderTarget();
 
 	// apply post process
 	g_renderManager->GetPostProcess()->Render(g_HDRRenderTarget, g_depthBuffer);
+
+	// flush debug geometry on top of the post-processed image (LDR back buffer)
+	// so colors are not scaled down by the HDR tone-mapping pass
+	g_debugRender->Flush();
 
 
 	// present
