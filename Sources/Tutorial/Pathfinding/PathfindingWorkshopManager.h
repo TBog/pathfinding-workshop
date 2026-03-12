@@ -3,7 +3,6 @@
 #ifndef __PATHFINDINGWORKSHOPMANAGER_H__
 #define __PATHFINDINGWORKSHOPMANAGER_H__
 
-#include "..\Utils\DynVec.h"
 
 class PathfindingWorkSheet;
 
