@@ -1,5 +1,7 @@
 #pragma once
 
+#include "..\Render\DebugRender.h"
+
 typedef D3DXVECTOR2 Vector2;
 typedef D3DXVECTOR3 Vector3;
 typedef D3DXVECTOR4 Vector4;

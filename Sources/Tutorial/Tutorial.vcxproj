@@ -117,6 +117,7 @@
     <ClInclude Include="Pathfinding\PathfindingWorkshopManager.h" />
     <ClInclude Include="Pathfinding\UserPathfindingWorkSheet.h" />
     <ClInclude Include="Render\Clouds.h" />
+    <ClInclude Include="Render\DebugRender.h" />
     <ClInclude Include="Render\EntitiesManager.h" />
     <ClInclude Include="Render\ObjectsManager.h" />
     <ClInclude Include="Render\PostProcess.h" />
@@ -149,6 +150,7 @@
     <ClCompile Include="Extern\tiny_obj_loader.cc" />
     <ClCompile Include="Pathfinding\PathfindingWorkshopManager.cpp" />
     <ClCompile Include="Render\Clouds.cpp" />
+    <ClCompile Include="Render\DebugRender.cpp" />
     <ClCompile Include="Render\EntitiesManager.cpp" />
     <ClCompile Include="Render\ObjectsManager.cpp" />
     <ClCompile Include="Render\PostProcess.cpp" />
@@ -182,6 +184,18 @@
     <Image Include="Tutorial.ico" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="..\..\bin\Shaders\DebugRender_PS.fx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\DebugRender_VS.fx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+    </FxCompile>
     <FxCompile Include="..\..\bin\Shaders\Clouds_apply_PS.fx">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
