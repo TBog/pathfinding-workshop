@@ -7,6 +7,9 @@
 
 #include "RenderManager.h"
 
+#include <algorithm>
+#include <vector>
+
 //--------------------------------------------------------------------------------------
 // Shaders
 //--------------------------------------------------------------------------------------
@@ -36,24 +39,15 @@ static void s_MakeBasis( const D3DXVECTOR3 &axis, D3DXVECTOR3 &outT1, D3DXVECTOR
     D3DXVec3Normalize( &outT2, &outT2 );
 }
 
-// Emit wire or filled icosahedron triangle, recursively subdividing onto the unit sphere.
+// Emit filled icosahedron triangle, recursively subdividing onto the unit sphere.
 static void s_DrawIcosahedronTri( DebugRender *dr,
                                    const D3DXVECTOR3 &center, float radius, const D3DXCOLOR &color,
                                    const D3DXVECTOR3 &a, const D3DXVECTOR3 &b, const D3DXVECTOR3 &c,
-                                   int depth, bool wire )
+                                   int depth )
 {
     if ( depth == 0 )
     {
-        if ( wire )
-        {
-            dr->AddLine( center + a * radius, center + b * radius, color );
-            dr->AddLine( center + b * radius, center + c * radius, color );
-            dr->AddLine( center + c * radius, center + a * radius, color );
-        }
-        else
-        {
-            dr->AddTriangle( center + a * radius, center + b * radius, center + c * radius, color );
-        }
+        dr->AddTriangle( center + a * radius, center + b * radius, center + c * radius, color );
         return;
     }
 
@@ -61,10 +55,61 @@ static void s_DrawIcosahedronTri( DebugRender *dr,
     D3DXVECTOR3 mBC = b + c;  D3DXVec3Normalize( &mBC, &mBC );
     D3DXVECTOR3 mCA = c + a;  D3DXVec3Normalize( &mCA, &mCA );
 
-    s_DrawIcosahedronTri( dr, center, radius, color,   a, mAB, mCA, depth - 1, wire );
-    s_DrawIcosahedronTri( dr, center, radius, color, mAB,   b, mBC, depth - 1, wire );
-    s_DrawIcosahedronTri( dr, center, radius, color, mCA, mBC,   c, depth - 1, wire );
-    s_DrawIcosahedronTri( dr, center, radius, color, mAB, mBC, mCA, depth - 1, wire );
+    s_DrawIcosahedronTri( dr, center, radius, color,   a, mAB, mCA, depth - 1 );
+    s_DrawIcosahedronTri( dr, center, radius, color, mAB,   b, mBC, depth - 1 );
+    s_DrawIcosahedronTri( dr, center, radius, color, mCA, mBC,   c, depth - 1 );
+    s_DrawIcosahedronTri( dr, center, radius, color, mAB, mBC, mCA, depth - 1 );
+}
+
+// Canonical directed edge (smaller vertex first) for wire icosahedron deduplication.
+struct s_IcoEdge { D3DXVECTOR3 a, b; };
+
+static bool s_Vec3Less( const D3DXVECTOR3 &u, const D3DXVECTOR3 &v )
+{
+    if ( u.x != v.x ) return u.x < v.x;
+    if ( u.y != v.y ) return u.y < v.y;
+    return u.z < v.z;
+}
+
+static s_IcoEdge s_CanonicalEdge( const D3DXVECTOR3 &u, const D3DXVECTOR3 &v )
+{
+    return s_Vec3Less( u, v ) ? s_IcoEdge{ u, v } : s_IcoEdge{ v, u };
+}
+
+static bool s_IcoEdgeLess( const s_IcoEdge &p, const s_IcoEdge &q )
+{
+    if ( s_Vec3Less( p.a, q.a ) ) return true;
+    if ( s_Vec3Less( q.a, p.a ) ) return false;
+    return s_Vec3Less( p.b, q.b );
+}
+
+static bool s_IcoEdgeEqual( const s_IcoEdge &p, const s_IcoEdge &q )
+{
+    return p.a.x == q.a.x && p.a.y == q.a.y && p.a.z == q.a.z &&
+           p.b.x == q.b.x && p.b.y == q.b.y && p.b.z == q.b.z;
+}
+
+// Recursively collect unique edges onto the unit sphere for wire icosahedron rendering.
+static void s_CollectIcosahedronEdges( std::vector<s_IcoEdge> &edges,
+                                        const D3DXVECTOR3 &a, const D3DXVECTOR3 &b, const D3DXVECTOR3 &c,
+                                        int depth )
+{
+    if ( depth == 0 )
+    {
+        edges.push_back( s_CanonicalEdge( a, b ) );
+        edges.push_back( s_CanonicalEdge( b, c ) );
+        edges.push_back( s_CanonicalEdge( c, a ) );
+        return;
+    }
+
+    D3DXVECTOR3 mAB = a + b;  D3DXVec3Normalize( &mAB, &mAB );
+    D3DXVECTOR3 mBC = b + c;  D3DXVec3Normalize( &mBC, &mBC );
+    D3DXVECTOR3 mCA = c + a;  D3DXVec3Normalize( &mCA, &mCA );
+
+    s_CollectIcosahedronEdges( edges,   a, mAB, mCA, depth - 1 );
+    s_CollectIcosahedronEdges( edges, mAB,   b, mBC, depth - 1 );
+    s_CollectIcosahedronEdges( edges, mCA, mBC,   c, depth - 1 );
+    s_CollectIcosahedronEdges( edges, mAB, mBC, mCA, depth - 1 );
 }
 
 // Emit wire circle rings + vertical lines for a cylinder given an explicit tangent basis.
@@ -426,10 +471,22 @@ void DebugRender::AddWireIcosahedron( const D3DXVECTOR3 &center, float radius, c
         { 4, 9, 5}, { 2, 4,11}, { 6, 2,10}, { 8, 6, 7}, { 9, 8, 1}
     };
 
+    // Collect all edges (including duplicates from shared face boundaries),
+    // then sort and deduplicate so each edge is drawn exactly once.
+    // Float equality in s_IcoEdgeEqual is exact here: all shared midpoints are
+    // computed from the same pair of base vertices via commutative addition (a+b == b+a
+    // in IEEE 754), so identical vertex pairs always produce identical bit patterns.
+    std::vector<s_IcoEdge> edges;
+    edges.reserve( 60 * ( 1 << ( 2 * tessellation ) ) ); // pre-dedup count: 3 * 20 * 4^N
     for ( int i = 0; i < 20; i++ )
-        s_DrawIcosahedronTri( this, center, radius, color,
-                               v[ faces[i][0] ], v[ faces[i][1] ], v[ faces[i][2] ],
-                               tessellation, true );
+        s_CollectIcosahedronEdges( edges,
+                                    v[ faces[i][0] ], v[ faces[i][1] ], v[ faces[i][2] ],
+                                    tessellation );
+    std::sort( edges.begin(), edges.end(), s_IcoEdgeLess );
+    edges.erase( std::unique( edges.begin(), edges.end(), s_IcoEdgeEqual ), edges.end() );
+
+    for ( size_t i = 0; i < edges.size(); i++ )
+        AddLine( center + edges[i].a * radius, center + edges[i].b * radius, color );
 }
 
 //-------------------------------------------------------------------
@@ -461,7 +518,7 @@ void DebugRender::AddIcosahedron( const D3DXVECTOR3 &center, float radius, const
     for ( int i = 0; i < 20; i++ )
         s_DrawIcosahedronTri( this, center, radius, color,
                                v[ faces[i][0] ], v[ faces[i][1] ], v[ faces[i][2] ],
-                               tessellation, false );
+                               tessellation );
 }
 
 //-------------------------------------------------------------------
