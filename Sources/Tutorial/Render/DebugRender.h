@@ -37,6 +37,30 @@ public:
     void                            AddTriangle             ( const D3DXVECTOR3 &v0, const D3DXVECTOR3 &v1, const D3DXVECTOR3 &v2, const D3DXCOLOR &color );
     void                            AddQuad                 ( const D3DXVECTOR3 &v0, const D3DXVECTOR3 &v1, const D3DXVECTOR3 &v2, const D3DXVECTOR3 &v3, const D3DXCOLOR &color );
 
+    // Sphere (wire and filled), tessellation controls slice/stack detail (default 16 => 16 slices, 8 stacks)
+    void                            AddWireSphere           ( const D3DXVECTOR3 &center, float radius, const D3DXCOLOR &color, int tessellation = 16 );
+    void                            AddSphere               ( const D3DXVECTOR3 &center, float radius, const D3DXCOLOR &color, int tessellation = 16 );
+
+    // Axis-aligned cube (wire and filled), defined by center and per-axis half-extents
+    void                            AddWireCube             ( const D3DXVECTOR3 &center, const D3DXVECTOR3 &halfExtents, const D3DXCOLOR &color );
+    void                            AddCube                 ( const D3DXVECTOR3 &center, const D3DXVECTOR3 &halfExtents, const D3DXCOLOR &color );
+
+    // Icosahedron (wire and filled), tessellation = subdivision level (0 = base 20-face shape)
+    void                            AddWireIcosahedron      ( const D3DXVECTOR3 &center, float radius, const D3DXCOLOR &color, int tessellation = 0 );
+    void                            AddIcosahedron          ( const D3DXVECTOR3 &center, float radius, const D3DXCOLOR &color, int tessellation = 0 );
+
+    // Cylinder variant 1: bottom position, height (along +Y), radius
+    void                            AddWireCylinder         ( const D3DXVECTOR3 &bottom, float height, float radius, const D3DXCOLOR &color, int tessellation = 16 );
+    void                            AddCylinder             ( const D3DXVECTOR3 &bottom, float height, float radius, const D3DXCOLOR &color, int tessellation = 16 );
+
+    // Cylinder variant 2: bottom position, top position, radius
+    void                            AddWireCylinder         ( const D3DXVECTOR3 &bottom, const D3DXVECTOR3 &top, float radius, const D3DXCOLOR &color, int tessellation = 16 );
+    void                            AddCylinder             ( const D3DXVECTOR3 &bottom, const D3DXVECTOR3 &top, float radius, const D3DXCOLOR &color, int tessellation = 16 );
+
+    // Cylinder variant 3: 4x4 matrix (Y axis = height direction, origin = bottom center), height, radius
+    void                            AddWireCylinder         ( const D3DXMATRIX &matrix, float height, float radius, const D3DXCOLOR &color, int tessellation = 16 );
+    void                            AddCylinder             ( const D3DXMATRIX &matrix, float height, float radius, const D3DXCOLOR &color, int tessellation = 16 );
+
     void                            Flush                   ( );
 
 protected:
