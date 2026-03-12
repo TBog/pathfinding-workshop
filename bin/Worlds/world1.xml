@@ -1,0 +1,7 @@
+<version>1</version>
+<world centerX='0' centerZ='0' size='4000' />
+<entities>
+    <ambulance_1 objectFileName='Models/Ambulance/Ambulance.obj' objectScale='1' x='0' y='0' z='0' yaw='0' pitch='0' roll='0'/>
+	<ambulance_2 objectFileName='Models/Ambulance/Ambulance.obj' objectScale='1' x='10' y='0' z='0' yaw='30' pitch='0' roll='0'/>
+	<ambulance_3 objectFileName='Models/Ambulance/Ambulance.obj' objectScale='1' x='20' y='0' z='0' yaw='90' pitch='0' roll='0'/>
+</entities>

@@ -1,0 +1,20 @@
+<version>1</version>
+<world centerX='0' centery='0' size='1000' />
+<terrain terrainFileName='Worlds/terrain.xml' />
+<postProcess postProcessFileName='Worlds/postProcess.xml' />
+<sky skyFileName='Worlds/sky.xml' />
+<clouds cloudsFileName='Worlds/clouds.xml' />
+<entities>
+    <plane_1 			objectFileName='Models/50x50_Plane/50x50_Plane.obj' 					objectScale='0.01' 	x='0' 	y='0.1' z='0' 	 yaw='0' 	pitch='0' 	roll='0'/>
+	<discobolus_statue 	objectFileName='Models/Discobolous/CB_Discobolus_LOD0.obj' 				objectScale='0.01' 	x='0' 	y='0'   z='0' 	 yaw='0' 	pitch='0' 	roll='0'/>
+    <house_1 			objectFileName='Models/WoodCabin/WoodenCabinObj.obj' 					objectScale='0.1' 	x='10' 	y='0'   z='10' 	 yaw='180' 	pitch='0' 	roll='0'/>
+    <house_2 			objectFileName='Models/WoodHouse/house.obj' 							objectScale='1' 	x='10' 	y='0'   z='-10'  yaw='0' 	pitch='0' 	roll='0'/>
+    <house_3 			objectFileName='Models/WoodCabin/WoodenCabinObj.obj' 					objectScale='0.1' 	x='-10' y='0'   z='10' 	 yaw='180' 	pitch='0' 	roll='0'/>
+    <house_4 			objectFileName='Models/WoodHouse/house.obj' 							objectScale='1' 	x='-10' y='0'   z='-10'	 yaw='0' 	pitch='0' 	roll='0'/>
+    <ambulance_1 		objectFileName='Models/Ambulance/Ambulance.obj' 						objectScale='1' 	x='5' 	y='0'   z='5'	 yaw='30' 	pitch='0' 	roll='0'/>
+    <forklift_1 		objectFileName='Models/Forklift/forklift.obj' 							objectScale='1' 	x='5' 	y='0'   z='-5'	 yaw='120' 	pitch='0' 	roll='0'/>
+    <lamborghini_1 		objectFileName='Models/Lamborginhi_Aventador/Lamborghini_Aventador.obj'	objectScale='0.01' 	x='-5' 	y='0'   z='5'	 yaw='0' 	pitch='0' 	roll='0'/>
+    <teapot_1 			objectFileName='Models/Teapot/teapot_s0.obj' 							objectScale='1' 	x='3' 	y='0'   z='3'	 yaw='0' 	pitch='0' 	roll='0'/>
+    <suitcase_1			objectFileName='Models/Vintage Suitcase/Vintage_Suitcase_LP.obj'		objectScale='0.01' 	x='3' 	y='0'   z='-3'	 yaw='0' 	pitch='0' 	roll='0'/>
+    <rock_1 			objectFileName='Models/Rock/rock.obj' 									objectScale='0.1' 	x='-3' 	y='0'   z='3'	 yaw='0' 	pitch='0' 	roll='0'/>
+</entities>

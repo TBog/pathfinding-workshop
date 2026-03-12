@@ -1,0 +1,9 @@
+<version>1</version>
+<terrain
+	centerX='0' centerZ='0'
+	size='1000'
+	heightMapFileName='Textures/Terrain/heightMap2.raw'
+	heightScalator='200'
+	gridSize='16'
+	colorMapFileName='Textures/Terrain/colorMap.dds'
+/>

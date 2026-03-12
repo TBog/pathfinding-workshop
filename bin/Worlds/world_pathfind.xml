@@ -1,0 +1,9 @@
+<version>1</version>
+<world centerX='0' centery='0' size='1000' />
+<terrain terrainFileName='Worlds/terrain.xml' />
+<postProcess postProcessFileName='Worlds/postProcess.xml' />
+<sky skyFileName='Worlds/sky.xml' />
+<clouds cloudsFileName='Worlds/clouds.xml' />
+<entities>
+    <plane_1 			objectFileName='Models/50x50_Plane/50x50_Plane.obj' 					objectScale='0.01' 	x='0' 	y='0.1' z='0' 	 yaw='0' 	pitch='0' 	roll='0'/>
+</entities>

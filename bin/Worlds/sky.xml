@@ -1,0 +1,9 @@
+<version>1</version>
+<sky
+    light_dir_x='1' light_dir_y='1' light_dir_z='1'
+    light_color_r='1' light_color_g='0.8' light_color_b='0.6' light_power='40'
+    light_ambientColor_r='0.15' light_ambientColor_g='0.58' light_ambientColor_b='0.83' light_ambientPower='15'
+    sky_color_r='0.22' sky_color_g='0.55' sky_color_b='0.94' sky_lightPower='40'
+    fog_color_r='0.60' fog_color_g='0.74' fog_color_b='0.93' fog_lightPower='40'
+    fog_start='250' fog_end='500'
+/>

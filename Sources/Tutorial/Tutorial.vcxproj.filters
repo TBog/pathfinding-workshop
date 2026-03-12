@@ -1,0 +1,285 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Utils">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="__Shaders__">
+      <UniqueIdentifier>{a397d94a-56bc-469d-91db-ac85ee8231ed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Render">
+      <UniqueIdentifier>{47f2e511-1fd0-42a4-9eaa-710f9e1778bd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Extern">
+      <UniqueIdentifier>{afbf9e39-5a0e-4ff6-8cca-064a823665c1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="World">
+      <UniqueIdentifier>{7bdcd7cd-8d5f-480c-b38b-9c98376d44f1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Pathfinding">
+      <UniqueIdentifier>{b8083af3-2eec-4c3c-a3b2-6fc623456a0d}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="framework.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\FrameTime.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Utils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\AutoList.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Shader.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Camera.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Mesh.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\RenderManager.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Input.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Extern\tiny_obj_loader.h">
+      <Filter>Extern</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Material.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Object.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Texture.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\RefCounted.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\TexturesManager.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\DynVec.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\bin\Shaders\Lighting.h">
+      <Filter>__Shaders__</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\bin\Shaders\Common_PS.h">
+      <Filter>__Shaders__</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\bin\Shaders\Common_VS.h">
+      <Filter>__Shaders__</Filter>
+    </ClInclude>
+    <ClInclude Include="Extern\tinyxml2.h">
+      <Filter>Extern</Filter>
+    </ClInclude>
+    <ClInclude Include="World\World.h">
+      <Filter>World</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\ObjectsManager.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\EntitiesManager.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Entity.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Frustum.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\Sky.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\Terrain.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\bin\Shaders\Utils.h">
+      <Filter>__Shaders__</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\Clouds.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\PostProcess.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\bin\Shaders\Clouds_utils.h">
+      <Filter>__Shaders__</Filter>
+    </ClInclude>
+    <ClInclude Include="Pathfinding\PathfindingWorkshopManager.h">
+      <Filter>Pathfinding</Filter>
+    </ClInclude>
+    <ClInclude Include="Pathfinding\PathfindingWorkSheet.h">
+      <Filter>Pathfinding</Filter>
+    </ClInclude>
+    <ClInclude Include="Pathfinding\UserPathfindingWorkSheet.h">
+      <Filter>Pathfinding</Filter>
+    </ClInclude>
+    <ClInclude Include="Pathfinding\ControlPathfindingWorkSheet.h">
+      <Filter>Pathfinding</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Tutorial.cpp" />
+    <ClCompile Include="pch.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\FrameTime.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Utils.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Shader.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Camera.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Mesh.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Render\RenderManager.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Input.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Extern\tiny_obj_loader.cc">
+      <Filter>Extern</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Material.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Object.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Texture.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Render\TexturesManager.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Extern\tinyxml2.cpp">
+      <Filter>Extern</Filter>
+    </ClCompile>
+    <ClCompile Include="World\World.cpp">
+      <Filter>World</Filter>
+    </ClCompile>
+    <ClCompile Include="Render\ObjectsManager.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Render\EntitiesManager.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Entity.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Frustum.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Render\Sky.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Render\Terrain.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Render\Clouds.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Render\PostProcess.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Pathfinding\PathfindingWorkshopManager.cpp">
+      <Filter>Pathfinding</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Tutorial.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="small.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Tutorial.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\..\bin\Shaders\FullScreenQuad_PS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\FullScreenQuad_VS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\Cube_PS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\Cube_VS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\Object_PS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\Object_VS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\Sky_PS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\Sky_VS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\Terrain_PS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\Terrain_VS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\Clouds_PS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\Clouds_VS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\PostProcess_PS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\PostProcess_VS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\Clouds_base_PS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\Clouds_details_PS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\Clouds_apply_PS.fx">
+      <Filter>__Shaders__</Filter>
+    </FxCompile>
+  </ItemGroup>
+</Project>
