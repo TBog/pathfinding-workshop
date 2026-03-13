@@ -37,16 +37,18 @@ public:
     void                            AddTriangle             ( const D3DXVECTOR3 &v0, const D3DXVECTOR3 &v1, const D3DXVECTOR3 &v2, const D3DXCOLOR &color );
     void                            AddQuad                 ( const D3DXVECTOR3 &v0, const D3DXVECTOR3 &v1, const D3DXVECTOR3 &v2, const D3DXVECTOR3 &v3, const D3DXCOLOR &color );
 
-    // Screen-space text at pixel coordinates (x, y)
-    void                            AddText                 ( int x, int y, const wchar_t *text, const D3DXCOLOR &color );
+    // Screen-space text at pixel coordinates (x, y).
+    // Pass a non-zero-alpha bgColor for a filled background rectangle.
+    // Pass a non-zero-alpha outlineColor for a 1-pixel outline drawn in four directions.
+    void                            AddText                 ( int x, int y, const wchar_t *text, const D3DXCOLOR &color, const D3DXCOLOR &bgColor = D3DXCOLOR(0,0,0,0), const D3DXCOLOR &outlineColor = D3DXCOLOR(0,0,0,0) );
 
     // World-space text: the 3D position is projected to screen; the text is always camera-facing
-    void                            AddText                 ( const D3DXVECTOR3 &worldPos, const wchar_t *text, const D3DXCOLOR &color );
+    void                            AddText                 ( const D3DXVECTOR3 &worldPos, const wchar_t *text, const D3DXCOLOR &color, const D3DXCOLOR &bgColor = D3DXCOLOR(0,0,0,0), const D3DXCOLOR &outlineColor = D3DXCOLOR(0,0,0,0) );
 
     // World-space text with a full transform matrix: position is taken from the matrix translation.
     // Pass a billboard matrix (built from camera axes) for camera-facing text, or any other
     // world matrix to orient the label in the scene (e.g. lying flat on a wall).
-    void                            AddText                 ( const D3DXMATRIX &worldMatrix, const wchar_t *text, const D3DXCOLOR &color );
+    void                            AddText                 ( const D3DXMATRIX &worldMatrix, const wchar_t *text, const D3DXCOLOR &color, const D3DXCOLOR &bgColor = D3DXCOLOR(0,0,0,0), const D3DXCOLOR &outlineColor = D3DXCOLOR(0,0,0,0) );
 
     // Sphere (wire and filled), tessellation controls slice/stack detail (default 16 => 16 slices, 8 stacks)
     void                            AddWireSphere           ( const D3DXVECTOR3 &center, float radius, const D3DXCOLOR &color, int tessellation = 16 );
@@ -93,6 +95,8 @@ protected:
         int                     m_screenX;
         int                     m_screenY;
         D3DXCOLOR               m_color;
+        D3DXCOLOR               m_bgColor;       // alpha=0: no background fill
+        D3DXCOLOR               m_outlineColor;  // alpha=0: no outline/shadow
     };
 
     //---------------------------------------------------------------

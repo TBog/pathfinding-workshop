@@ -718,16 +718,18 @@ void DebugRender::AddCylinder( const D3DXMATRIX &matrix, float height, float rad
 // AddText – screen-space pixel coordinates
 //-------------------------------------------------------------------
 
-void DebugRender::AddText( int x, int y, const wchar_t *text, const D3DXCOLOR &color )
+void DebugRender::AddText( int x, int y, const wchar_t *text, const D3DXCOLOR &color, const D3DXCOLOR &bgColor, const D3DXCOLOR &outlineColor )
 {
     if ( !text || !text[0] )
         return;
 
     DebugTextEntry entry;
     wcsncpy_s( entry.m_text, text, _TRUNCATE );
-    entry.m_screenX = x;
-    entry.m_screenY = y;
-    entry.m_color   = color;
+    entry.m_screenX      = x;
+    entry.m_screenY      = y;
+    entry.m_color        = color;
+    entry.m_bgColor      = bgColor;
+    entry.m_outlineColor = outlineColor;
     m_textEntries.Add( entry );
 }
 
@@ -735,7 +737,7 @@ void DebugRender::AddText( int x, int y, const wchar_t *text, const D3DXCOLOR &c
 // AddText – 3D world position projected to screen
 //-------------------------------------------------------------------
 
-void DebugRender::AddText( const D3DXVECTOR3 &worldPos, const wchar_t *text, const D3DXCOLOR &color )
+void DebugRender::AddText( const D3DXVECTOR3 &worldPos, const wchar_t *text, const D3DXCOLOR &color, const D3DXCOLOR &bgColor, const D3DXCOLOR &outlineColor )
 {
     if ( !text || !text[0] )
         return;
@@ -768,7 +770,7 @@ void DebugRender::AddText( const D3DXVECTOR3 &worldPos, const wchar_t *text, con
     const int screenX = static_cast<int>( ( ndcX * 0.5f + 0.5f ) * g_renderManager->GetResolutionWidth() );
     const int screenY = static_cast<int>( (-ndcY * 0.5f + 0.5f ) * g_renderManager->GetResolutionHeight() );
 
-    AddText( screenX, screenY, text, color );
+    AddText( screenX, screenY, text, color, bgColor, outlineColor );
 }
 
 //-------------------------------------------------------------------
@@ -777,11 +779,11 @@ void DebugRender::AddText( const D3DXVECTOR3 &worldPos, const wchar_t *text, con
 // or any other transform to orient the label in the scene.
 //-------------------------------------------------------------------
 
-void DebugRender::AddText( const D3DXMATRIX &worldMatrix, const wchar_t *text, const D3DXCOLOR &color )
+void DebugRender::AddText( const D3DXMATRIX &worldMatrix, const wchar_t *text, const D3DXCOLOR &color, const D3DXCOLOR &bgColor, const D3DXCOLOR &outlineColor )
 {
     // Extract the world-space position from the matrix translation (row 4 in D3DX row-major)
     const D3DXVECTOR3 worldPos( worldMatrix._41, worldMatrix._42, worldMatrix._43 );
-    AddText( worldPos, text, color );
+    AddText( worldPos, text, color, bgColor, outlineColor );
 }
 
 //-------------------------------------------------------------------
@@ -812,14 +814,49 @@ void DebugRender::_FlushText()
     {
         const DebugTextEntry &entry = m_textEntries[i];
 
+        RECT rc = { entry.m_screenX, entry.m_screenY, width, height };
+
+        // Optional background: measure the text bounding box, then fill it.
+        if ( entry.m_bgColor.a > 0.0f )
+        {
+            RECT calcRect = rc;
+            DrawTextW( m_textHDC, entry.m_text, -1, &calcRect, DT_CALCRECT | DT_LEFT );
+            HBRUSH hBrush = CreateSolidBrush( RGB(
+                static_cast<BYTE>( entry.m_bgColor.r * 255.0f ),
+                static_cast<BYTE>( entry.m_bgColor.g * 255.0f ),
+                static_cast<BYTE>( entry.m_bgColor.b * 255.0f ) ) );
+            if ( hBrush )
+            {
+                FillRect( m_textHDC, &calcRect, hBrush );
+                DeleteObject( hBrush );
+            }
+        }
+
+        // Optional outline: draw the text 4 times offset by 1 pixel in cardinal directions.
+        if ( entry.m_outlineColor.a > 0.0f )
+        {
+            const COLORREF outlineRef = RGB(
+                static_cast<BYTE>( entry.m_outlineColor.r * 255.0f ),
+                static_cast<BYTE>( entry.m_outlineColor.g * 255.0f ),
+                static_cast<BYTE>( entry.m_outlineColor.b * 255.0f ) );
+            SetTextColor( m_textHDC, outlineRef );
+
+            const int offsetsX[4] = { -1, 1,  0, 0 };
+            const int offsetsY[4] = {  0, 0, -1, 1 };
+            for ( int o = 0; o < 4; o++ )
+            {
+                RECT rcOff = { entry.m_screenX + offsetsX[o], entry.m_screenY + offsetsY[o], width, height };
+                DrawTextW( m_textHDC, entry.m_text, -1, &rcOff, DT_NOCLIP | DT_LEFT );
+            }
+        }
+
+        // Main text
         // GDI COLORREF is 0x00BBGGRR (red in the low byte).
         const COLORREF gdiColor = RGB(
             static_cast<BYTE>( entry.m_color.r * 255.0f ),
             static_cast<BYTE>( entry.m_color.g * 255.0f ),
             static_cast<BYTE>( entry.m_color.b * 255.0f ) );
         SetTextColor( m_textHDC, gdiColor );
-
-        RECT rc = { entry.m_screenX, entry.m_screenY, width, height };
         DrawTextW( m_textHDC, entry.m_text, -1, &rc, DT_NOCLIP | DT_LEFT );
     }
 
