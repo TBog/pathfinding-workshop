@@ -5,6 +5,7 @@
 #include "..\Utils\Utils.h"
 #include "..\Utils\Camera.h"
 #include "..\Utils\Shader.h"
+#include "..\Utils\Mesh.h"
 
 #include "RenderManager.h"
 
@@ -739,7 +740,7 @@ void DebugRender::AddText( const D3DXVECTOR3 &worldPos, const wchar_t *text, con
     if ( !text || !text[0] )
         return;
 
-    const Camera *camera = g_renderManager->GetCamera();
+    Camera *camera = g_renderManager->GetCamera();
 
     // Build combined view-projection matrix
     D3DXMATRIX viewProj;
