@@ -24,7 +24,7 @@ public:
     void                            SetViewParams       ( const D3DXVECTOR3 &eyePos, const D3DXVECTOR3 &lookAtPos );
     void                            SetProjParams       ( float fov, float aspect, float nearPlane, float farPlane );
 
-    void                            UpdateBasedOnInput  ( float dt, float moveAxisX, float moveAxisY, float lookAxisX, float lookAxisY, float speedScale );
+    void                            UpdateBasedOnInput  ( float dt, float moveAxisX, float moveAxisY, float lookAxisX, float lookAxisY, float speedScale, float mouseDeltaX = 0.f, float mouseDeltaY = 0.f );
 
     const D3DXMATRIX&               GetViewMatrix       ( )         { return m_viewMatrix; }
     const D3DXMATRIX&               GetInvViewMatrix    ( )         { return m_invViewMatrix; }

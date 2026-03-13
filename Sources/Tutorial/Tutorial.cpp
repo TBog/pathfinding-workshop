@@ -72,6 +72,9 @@ struct CB_PS_CUBE
 
 Object* g_testObj = NULL;
 
+static bool g_mouseLookActive = false;
+static const float MOUSE_LOOK_SENSITIVITY = 0.003f;  // radians per pixel
+
 //--------------------------------------------------------------------------------------
 // Forward declarations 
 //--------------------------------------------------------------------------------------
@@ -163,6 +166,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
+		break;
+	case WM_KILLFOCUS:
+		if (g_mouseLookActive)
+		{
+			g_mouseLookActive = false;
+			ReleaseCapture();
+			ShowCursor(TRUE);
+		}
 		break;
 	default:
 		return DefWindowProc(hWnd, message, wParam, lParam);
@@ -638,7 +649,45 @@ void Update(float dt)
 	if (g_input->GetGamePadState(0).m_buttonStates & XINPUT_GAMEPAD_RIGHT_SHOULDER)
 		speedScale = 100.f;
 
-	g_renderManager->GetCamera()->UpdateBasedOnInput(dt, moveAxisX, moveAxisY, lookAxisX, lookAxisY, speedScale);
+	// Keyboard movement: WASD keys
+	if (g_input->IsKeyPressed('W'))
+		moveAxisY += 1.f;
+	if (g_input->IsKeyPressed('S'))
+		moveAxisY -= 1.f;
+	if (g_input->IsKeyPressed('A'))
+		moveAxisX -= 1.f;
+	if (g_input->IsKeyPressed('D'))
+		moveAxisX += 1.f;
+	moveAxisX = __max(-1.f, __min(1.f, moveAxisX));
+	moveAxisY = __max(-1.f, __min(1.f, moveAxisY));
+
+	// Shift key: speed boost
+	if (g_input->IsKeyPressed(VK_SHIFT))
+		speedScale = __max(speedScale, 10.f);
+
+	// Mouse look: hold right mouse button to rotate the camera
+	float mouseDeltaX = 0.f;
+	float mouseDeltaY = 0.f;
+	bool isRMBDown = g_input->IsMouseButtonDown(1);
+	if (isRMBDown && !g_mouseLookActive)
+	{
+		SetCapture(g_hWnd);
+		ShowCursor(FALSE);
+		g_mouseLookActive = true;
+	}
+	else if (!isRMBDown && g_mouseLookActive)
+	{
+		ReleaseCapture();
+		ShowCursor(TRUE);
+		g_mouseLookActive = false;
+	}
+	if (g_mouseLookActive)
+	{
+		mouseDeltaX = g_input->GetMouseDeltaX() * MOUSE_LOOK_SENSITIVITY;
+		mouseDeltaY = g_input->GetMouseDeltaY() * MOUSE_LOOK_SENSITIVITY;
+	}
+
+	g_renderManager->GetCamera()->UpdateBasedOnInput(dt, moveAxisX, moveAxisY, lookAxisX, lookAxisY, speedScale, mouseDeltaX, mouseDeltaY);
 	g_pathfindingWorkshopManager->Update(dt);
 }
 

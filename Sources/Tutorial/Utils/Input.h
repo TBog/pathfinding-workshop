@@ -72,6 +72,11 @@ public:
     bool                            IsCtrlPressed    ( )            { return m_ctrlKeyPressed; }
     bool                            IsKeyPressed    ( int keyIdx )  { return m_keysPressed[keyIdx]; }
 
+    int                             GetMouseDeltaX  ( ) const       { return m_mouseDeltaX; }
+    int                             GetMouseDeltaY  ( ) const       { return m_mouseDeltaY; }
+    bool                            IsMouseButtonDown( int btn ) const { return (btn >= 0 && btn < 3) ? m_mouseButtons[btn] : false; }
+    void                            ResetMousePosition( int x, int y ) { m_mousePosX = x; m_mousePosY = y; }
+
 protected:
     //---------------------------------------------------------------
     //	PROTECTED FUNCTIONS
@@ -86,6 +91,14 @@ private:
     bool                            m_keysPressed[kMaxKeysCount];
     bool                            m_altKeyPressed;
     bool                            m_ctrlKeyPressed;
+
+    int                             m_mousePosX;
+    int                             m_mousePosY;
+    int                             m_mouseDeltaXAccum;
+    int                             m_mouseDeltaYAccum;
+    int                             m_mouseDeltaX;
+    int                             m_mouseDeltaY;
+    bool                            m_mouseButtons[3];  // 0=left, 1=right, 2=middle
 
 };
 
