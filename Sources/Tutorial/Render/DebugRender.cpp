@@ -304,7 +304,8 @@ HRESULT DebugRender::CreateResources()
 
         // D3D11 dynamic BGRA texture – GDI writes BGRX in memory; DXGI_FORMAT_B8G8R8A8_UNORM
         // automatically swizzles so the shader receives correct RGBA values.  The alpha
-        // component comes from the reserved GDI byte (always 0) and is re-derived in the shader.
+        // channel (byte 3) starts as 0 from GDI and is written explicitly by _FlushText
+        // after each draw call so that per-entry transparency is honoured.
         D3D11_TEXTURE2D_DESC texDesc = {};
         texDesc.Width              = static_cast<UINT>(width);
         texDesc.Height             = static_cast<UINT>(height);
@@ -787,6 +788,53 @@ void DebugRender::AddText( const D3DXMATRIX &worldMatrix, const wchar_t *text, c
 }
 
 //-------------------------------------------------------------------
+// Helpers for writing per-pixel alpha into the GDI DIBSection.
+// GDI always writes 0 into the reserved (X) byte, so after each draw
+// call we save a BGR snapshot of the affected region beforehand and
+// then stamp in the correct alpha for every pixel whose BGR changed.
+//-------------------------------------------------------------------
+
+// Save the BGR channels (masked to 0x00FFFFFF) of a bitmap region.
+static void SaveBitmapRegion( const BYTE *bits, int bitmapWidth,
+                               const RECT &rect, std::vector<DWORD> &out )
+{
+    const int w = rect.right  - rect.left;
+    const int h = rect.bottom - rect.top;
+    if ( w <= 0 || h <= 0 )
+    {
+        out.clear();
+        return;
+    }
+    out.resize( static_cast<size_t>( w ) * static_cast<size_t>( h ) );
+    for ( int sy = 0; sy < h; sy++ )
+        for ( int sx = 0; sx < w; sx++ )
+        {
+            const int idx = ( rect.top + sy ) * bitmapWidth + ( rect.left + sx );
+            out[ sy * w + sx ] = *reinterpret_cast<const DWORD *>( bits + idx * 4 ) & 0x00FFFFFFu;
+        }
+}
+
+// For every pixel in rect whose BGR differs from the saved snapshot, set alpha = alpha.
+static void ApplyAlphaToChanged( BYTE *bits, int bitmapWidth,
+                                  const RECT &rect,
+                                  const std::vector<DWORD> &saved,
+                                  BYTE alpha )
+{
+    const int w = rect.right  - rect.left;
+    const int h = rect.bottom - rect.top;
+    if ( w <= 0 || h <= 0 || saved.empty() )
+        return;
+    for ( int sy = 0; sy < h; sy++ )
+        for ( int sx = 0; sx < w; sx++ )
+        {
+            const int idx = ( rect.top + sy ) * bitmapWidth + ( rect.left + sx );
+            BYTE *pixel = bits + idx * 4;
+            if ( ( *reinterpret_cast<const DWORD *>( pixel ) & 0x00FFFFFFu ) != saved[ sy * w + sx ] )
+                pixel[3] = alpha;
+        }
+}
+
+//-------------------------------------------------------------------
 // _FlushText – rasterise all queued text entries into a GDI bitmap,
 //              upload to a D3D11 texture, then alpha-blend over the scene.
 //-------------------------------------------------------------------
@@ -809,14 +857,17 @@ void DebugRender::_FlushText()
     // 1. Clear the GDI bitmap to fully transparent (all bytes = 0).
     memset( m_textBitmapBits, 0, static_cast<size_t>( width ) * height * 4 );
 
-    // 2. Render each queued text entry with GDI.
+    // 2. Render each queued text entry with GDI, then stamp the correct alpha
+    //    into the DIBSection's 4th byte (GDI always leaves it at 0).
     for ( int i = 0; i < count; i++ )
     {
         const DebugTextEntry &entry = m_textEntries[i];
 
         RECT rc = { entry.m_screenX, entry.m_screenY, width, height };
 
-        // Optional background: measure the text bounding box, then fill it.
+        // ---- Optional background fill ----
+        // FillRect touches every pixel in calcRect uniformly, so no per-pixel
+        // comparison is needed — just set the alpha channel for the whole rect.
         if ( entry.m_bgColor.a > 0.0f )
         {
             RECT calcRect = rc;
@@ -830,9 +881,16 @@ void DebugRender::_FlushText()
                 FillRect( m_textHDC, &calcRect, hBrush );
                 DeleteObject( hBrush );
             }
+            const BYTE bgAlpha = static_cast<BYTE>( entry.m_bgColor.a * 255.0f );
+            for ( LONG y = calcRect.top; y < calcRect.bottom; y++ )
+                for ( LONG x = calcRect.left; x < calcRect.right; x++ )
+                    m_textBitmapBits[ ( y * width + x ) * 4 + 3 ] = bgAlpha;
         }
 
-        // Optional outline: draw the text 4 times offset by 1 pixel in cardinal directions.
+        // ---- Optional outline (4-direction 1px offset) ----
+        // DrawTextW only touches foreground (text) pixels (TRANSPARENT mode), so we
+        // save a BGR snapshot beforehand and compare afterward to find changed pixels.
+        // This correctly handles all outline colours including pure black.
         if ( entry.m_outlineColor.a > 0.0f )
         {
             const COLORREF outlineRef = RGB(
@@ -841,6 +899,19 @@ void DebugRender::_FlushText()
                 static_cast<BYTE>( entry.m_outlineColor.b * 255.0f ) );
             SetTextColor( m_textHDC, outlineRef );
 
+            // Measure text bounds; expand by 1px for the offsets; clamp to bitmap.
+            RECT textBounds = rc;
+            DrawTextW( m_textHDC, entry.m_text, -1, &textBounds, DT_CALCRECT | DT_LEFT );
+            const RECT scanRect = {
+                max( 0L,           textBounds.left   - 1 ),
+                max( 0L,           textBounds.top    - 1 ),
+                min( (LONG)width,  textBounds.right  + 1 ),
+                min( (LONG)height, textBounds.bottom + 1 )
+            };
+
+            std::vector<DWORD> saved;
+            SaveBitmapRegion( m_textBitmapBits, width, scanRect, saved );
+
             const int offsetsX[4] = { -1, 1,  0, 0 };
             const int offsetsY[4] = {  0, 0, -1, 1 };
             for ( int o = 0; o < 4; o++ )
@@ -848,21 +919,42 @@ void DebugRender::_FlushText()
                 RECT rcOff = { entry.m_screenX + offsetsX[o], entry.m_screenY + offsetsY[o], width, height };
                 DrawTextW( m_textHDC, entry.m_text, -1, &rcOff, DT_NOCLIP | DT_LEFT );
             }
+
+            const BYTE outlineAlpha = static_cast<BYTE>( entry.m_outlineColor.a * 255.0f );
+            ApplyAlphaToChanged( m_textBitmapBits, width, scanRect, saved, outlineAlpha );
         }
 
-        // Main text
-        // GDI COLORREF is 0x00BBGGRR (red in the low byte).
-        const COLORREF gdiColor = RGB(
-            static_cast<BYTE>( entry.m_color.r * 255.0f ),
-            static_cast<BYTE>( entry.m_color.g * 255.0f ),
-            static_cast<BYTE>( entry.m_color.b * 255.0f ) );
-        SetTextColor( m_textHDC, gdiColor );
-        DrawTextW( m_textHDC, entry.m_text, -1, &rc, DT_NOCLIP | DT_LEFT );
+        // ---- Main text ----
+        // Same save-and-compare strategy so semi-transparent text and black text work.
+        {
+            const COLORREF gdiColor = RGB(
+                static_cast<BYTE>( entry.m_color.r * 255.0f ),
+                static_cast<BYTE>( entry.m_color.g * 255.0f ),
+                static_cast<BYTE>( entry.m_color.b * 255.0f ) );
+            SetTextColor( m_textHDC, gdiColor );
+
+            RECT textBounds = rc;
+            DrawTextW( m_textHDC, entry.m_text, -1, &textBounds, DT_CALCRECT | DT_LEFT );
+            const RECT scanRect = {
+                max( 0L,           textBounds.left   ),
+                max( 0L,           textBounds.top    ),
+                min( (LONG)width,  textBounds.right  ),
+                min( (LONG)height, textBounds.bottom )
+            };
+
+            std::vector<DWORD> saved;
+            SaveBitmapRegion( m_textBitmapBits, width, scanRect, saved );
+
+            DrawTextW( m_textHDC, entry.m_text, -1, &rc, DT_NOCLIP | DT_LEFT );
+
+            const BYTE mainAlpha = static_cast<BYTE>( entry.m_color.a * 255.0f );
+            ApplyAlphaToChanged( m_textBitmapBits, width, scanRect, saved, mainAlpha );
+        }
     }
 
-    // 3. Upload the raw GDI BGRX bitmap to the D3D11 dynamic texture.
-    //    DXGI_FORMAT_B8G8R8A8_UNORM handles the B<->R swizzle automatically; the shader
-    //    derives the alpha channel from the colour data.
+    // 3. Upload the raw GDI BGRA bitmap to the D3D11 dynamic texture.
+    //    DXGI_FORMAT_B8G8R8A8_UNORM handles the B<->R swizzle automatically; the alpha
+    //    channel has been written by the loop above so the shader can use it directly.
     ID3D11DeviceContext *d3dContext = g_renderManager->GetDeviceContext();
 
     D3D11_MAPPED_SUBRESOURCE mapped = {};
