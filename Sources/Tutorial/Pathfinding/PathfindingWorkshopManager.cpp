@@ -91,6 +91,10 @@ void PathfindingWorkshopManager::_RunSignedAreaExercise()
 		g_debugRender->AddSphere(p1, .05f, Color(1.f, 1.f, 1.f, .5f));
 		g_debugRender->AddSphere(p2, .05f, Color(1.f, 1.f, 1.f, .5f));
 		g_debugRender->AddSphere(p3, .05f, Color(0.f, 0.f, 1.f, .5f));
+
+		WCHAR msg[32];
+		swprintf_s(msg, ARRAYSIZE(msg), L"p%d", i);
+		g_debugRender->AddText(p3, msg, Color(0.f, 0.f, 1.f, 1.f), Color(.5f, .5f, 0.f, .75f));
 		
 		Vector2 testPoints[] = { Vector2(p1.x, p1.z), Vector2(p2.x, p2.z), Vector2(p3.x, p3.z) };
 		const bool matchingIsLeft = m_UserWorkSheet->IsLeft(testPoints[0], testPoints[1], testPoints[2]) != m_ControlWorkSheet->IsLeft(testPoints[0], testPoints[1], testPoints[2]);
