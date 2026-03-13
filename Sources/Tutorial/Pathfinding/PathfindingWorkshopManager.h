@@ -3,8 +3,10 @@
 #ifndef __PATHFINDINGWORKSHOPMANAGER_H__
 #define __PATHFINDINGWORKSHOPMANAGER_H__
 
-
-class PathfindingWorkSheet;
+namespace Pathfinding
+{
+	class PathfindingWorkSheet;
+}
 
 //===================================================================
 //	CLASS PathfindingWorkshopManager
@@ -32,7 +34,6 @@ public:
 	//	MAIN FUNCTIONS
 	//---------------------------------------------------------------
 	void Update(float dt);
-	void Render();
 
 protected:
 
@@ -40,8 +41,9 @@ protected:
 
 	static PathfindingWorkshopManager* s_Instance;
 
-	PathfindingWorkSheet* m_UserWorkSheet{ nullptr };
-	PathfindingWorkSheet* m_ControlWorkSheet{ nullptr };
+	float m_RotatingAngle{ 0.f };
+	Pathfinding::PathfindingWorkSheet* m_UserWorkSheet{ nullptr };
+	Pathfinding::PathfindingWorkSheet* m_ControlWorkSheet{ nullptr };
 };
 
 #define g_pathfindingWorkshopManager PathfindingWorkshopManager::Get()

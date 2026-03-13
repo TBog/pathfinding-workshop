@@ -115,7 +115,10 @@
     <ClInclude Include="Pathfinding\ControlPathfindingWorkSheet.h" />
     <ClInclude Include="Pathfinding\PathfindingWorkSheet.h" />
     <ClInclude Include="Pathfinding\PathfindingWorkshopManager.h" />
+    <ClInclude Include="Pathfinding\Triangulation.h" />
+    <ClInclude Include="Pathfinding\Types.h" />
     <ClInclude Include="Pathfinding\UserPathfindingWorkSheet.h" />
+    <ClInclude Include="Pathfinding\Utils.h" />
     <ClInclude Include="Render\Clouds.h" />
     <ClInclude Include="Render\DebugRender.h" />
     <ClInclude Include="Render\EntitiesManager.h" />
@@ -150,6 +153,7 @@
     <ClCompile Include="Extern\tiny_obj_loader.cc" />
     <ClCompile Include="Pathfinding\PathfindingWorkSheet.cpp" />
     <ClCompile Include="Pathfinding\PathfindingWorkshopManager.cpp" />
+    <ClCompile Include="Pathfinding\Triangulation.cpp" />
     <ClCompile Include="Render\Clouds.cpp" />
     <ClCompile Include="Render\DebugRender.cpp" />
     <ClCompile Include="Render\EntitiesManager.cpp" />

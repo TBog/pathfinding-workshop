@@ -682,9 +682,6 @@ void Render(float dt)
 	// render the clouds
 	g_renderManager->GetClouds()->Render(g_HDRRenderTarget, g_depthBuffer);
 
-	// build debug geometry from pathfinding workshop (adds to DynVec, no GPU work yet)
-	g_pathfindingWorkshopManager->Render();
-
 	// set back the back buffer render target
 	g_renderManager->SetBackBufferRenderTarget();
 
