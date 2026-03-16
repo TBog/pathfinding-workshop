@@ -74,6 +74,17 @@ public:
     void                            AddWireCylinder         ( const D3DXMATRIX &matrix, float height, float radius, const D3DXCOLOR &color, int tessellation = 16 );
     void                            AddCylinder             ( const D3DXMATRIX &matrix, float height, float radius, const D3DXCOLOR &color, int tessellation = 16 );
 
+    // Circle (wire and filled), defined by center, radius and normal (tessellation = number of segments, default 16)
+    void                            AddWireCircle           ( const D3DXVECTOR3 &center, float radius, const D3DXVECTOR3 &normal, const D3DXCOLOR &color, int tessellation = 16 );
+    void                            AddCircle               ( const D3DXVECTOR3 &center, float radius, const D3DXVECTOR3 &normal, const D3DXCOLOR &color, int tessellation = 16 );
+
+    // Circle (wire and filled), defined by a 4x4 matrix (Y axis = normal, origin = center) and radius
+    void                            AddWireCircle           ( const D3DXMATRIX &matrix, float radius, const D3DXCOLOR &color, int tessellation = 16 );
+    void                            AddCircle               ( const D3DXMATRIX &matrix, float radius, const D3DXCOLOR &color, int tessellation = 16 );
+
+    // Wire triangle: draws the three edges of a triangle
+    void                            AddWireTriangle         ( const D3DXVECTOR3 &v0, const D3DXVECTOR3 &v1, const D3DXVECTOR3 &v2, const D3DXCOLOR &color );
+
     void                            Flush                   ( );
 
 protected:
