@@ -716,6 +716,79 @@ void DebugRender::AddCylinder(const D3DXMATRIX& matrix, float height, float radi
 }
 
 //-------------------------------------------------------------------
+// Circle – variant 1: center, radius, normal
+//-------------------------------------------------------------------
+
+void DebugRender::AddWireCircle(const D3DXVECTOR3& center, float radius, const D3DXVECTOR3& normal, const D3DXCOLOR& color, int tessellation)
+{
+	if (tessellation < 3) tessellation = 3;
+	D3DXVECTOR3 n = normal;
+	const float nLen = D3DXVec3Length(&n);
+	if (nLen < FLT_EPSILON)
+		return;
+	n /= nLen;
+	D3DXVECTOR3 t1, t2;
+	s_MakeBasis(n, t1, t2);
+	for (int i = 0; i < tessellation; i++)
+	{
+		const float a0 = kTwoPI * i / tessellation;
+		const float a1 = kTwoPI * (i + 1) / tessellation;
+		const D3DXVECTOR3 p0 = center + t1 * (radius * cosf(a0)) + t2 * (radius * sinf(a0));
+		const D3DXVECTOR3 p1 = center + t1 * (radius * cosf(a1)) + t2 * (radius * sinf(a1));
+		AddLine(p0, p1, color);
+	}
+}
+
+void DebugRender::AddCircle(const D3DXVECTOR3& center, float radius, const D3DXVECTOR3& normal, const D3DXCOLOR& color, int tessellation)
+{
+	if (tessellation < 3) tessellation = 3;
+	D3DXVECTOR3 n = normal;
+	const float nLen = D3DXVec3Length(&n);
+	if (nLen < FLT_EPSILON)
+		return;
+	n /= nLen;
+	D3DXVECTOR3 t1, t2;
+	s_MakeBasis(n, t1, t2);
+	for (int i = 0; i < tessellation; i++)
+	{
+		const float a0 = kTwoPI * i / tessellation;
+		const float a1 = kTwoPI * (i + 1) / tessellation;
+		const D3DXVECTOR3 p0 = center + t1 * (radius * cosf(a0)) + t2 * (radius * sinf(a0));
+		const D3DXVECTOR3 p1 = center + t1 * (radius * cosf(a1)) + t2 * (radius * sinf(a1));
+		AddTriangle(center, p0, p1, color);
+	}
+}
+
+//-------------------------------------------------------------------
+// Circle – variant 2: 4x4 matrix (Y axis = normal, origin = center), radius
+//-------------------------------------------------------------------
+
+void DebugRender::AddWireCircle(const D3DXMATRIX& matrix, float radius, const D3DXCOLOR& color, int tessellation)
+{
+	const D3DXVECTOR3 center(matrix._41, matrix._42, matrix._43);
+	const D3DXVECTOR3 normal(matrix._21, matrix._22, matrix._23);
+	AddWireCircle(center, radius, normal, color, tessellation);
+}
+
+void DebugRender::AddCircle(const D3DXMATRIX& matrix, float radius, const D3DXCOLOR& color, int tessellation)
+{
+	const D3DXVECTOR3 center(matrix._41, matrix._42, matrix._43);
+	const D3DXVECTOR3 normal(matrix._21, matrix._22, matrix._23);
+	AddCircle(center, radius, normal, color, tessellation);
+}
+
+//-------------------------------------------------------------------
+// Wire triangle: draws the three edges of a triangle
+//-------------------------------------------------------------------
+
+void DebugRender::AddWireTriangle(const D3DXVECTOR3& v0, const D3DXVECTOR3& v1, const D3DXVECTOR3& v2, const D3DXCOLOR& color)
+{
+	AddLine(v0, v1, color);
+	AddLine(v1, v2, color);
+	AddLine(v2, v0, color);
+}
+
+//-------------------------------------------------------------------
 // AddText – screen-space pixel coordinates
 //-------------------------------------------------------------------
 

@@ -13,6 +13,7 @@ Students implement geometric primitives (signed area, line-side test, and more) 
 - [Dependencies & Requirements](#dependencies--requirements)
 - [Installation & Build](#installation--build)
 - [Usage](#usage)
+- [Debug Rendering API](#debug-rendering-api)
 - [Pathfinding Exercises](#pathfinding-exercises)
 - [Architecture Overview](#architecture-overview)
 - [Contributing](#contributing)
@@ -24,6 +25,7 @@ Students implement geometric primitives (signed area, line-side test, and more) 
 
 - **Exercise Framework** — A base class (`PathfindingWorkSheet`) defines the interface for every exercise. Students fill in `UserPathfindingWorkSheet`; the built-in `ControlPathfindingWorkSheet` provides the reference solution for comparison.
 - **Real-Time 3D Visualization** — Direct3D 11 renderer with frustum culling, HDR render targets, sky, terrain, and volumetric clouds.
+- **Debug Rendering** — Immediate-mode debug draw API (`DebugRender`) for lines, triangles, quads, wire/filled spheres, cubes, icosahedra, cylinders, circles, and screen-space or world-space text labels.
 - **Shader Hot-Reload** — Press **Alt + R** at runtime to recompile all HLSL shaders without restarting the application.
 - **Gamepad & Keyboard Support** — XInput gamepad (Xbox controller) and keyboard camera controls out of the box.
 - **XML-Driven Scenes** — World configuration, terrain, sky, clouds, and post-processing settings are all declared in XML files under `bin/Worlds/`.
@@ -174,6 +176,50 @@ Set `Tutorial` as the startup project and press **F5** (or run the `.exe` from `
 ### Switching the Active World
 
 Edit `Tutorial.cpp` to change the XML world file loaded at startup, or modify any of the XML files under `bin/Worlds/` to adjust scene content, terrain, sky, clouds, or post-processing settings.
+
+---
+
+## Debug Rendering API
+
+`DebugRender` provides an immediate-mode draw API. All calls are accumulated each frame and flushed to the GPU by `DebugRender::Flush()`. Access the singleton via the `g_debugRender` macro.
+
+### Primitives
+
+| Method | Description |
+|---|---|
+| `AddLine(start, end, color)` | Single line segment |
+| `AddTriangle(v0, v1, v2, color)` | Filled triangle |
+| `AddWireTriangle(v0, v1, v2, color)` | Wireframe triangle (three edges) |
+| `AddQuad(v0, v1, v2, v3, color)` | Filled quad (two triangles) |
+
+### Shapes
+
+| Method | Description |
+|---|---|
+| `AddWireSphere(center, radius, color [, tess])` | Wireframe sphere |
+| `AddSphere(center, radius, color [, tess])` | Filled sphere |
+| `AddWireCube(center, halfExtents, color)` | Wireframe axis-aligned box |
+| `AddCube(center, halfExtents, color)` | Filled axis-aligned box |
+| `AddWireIcosahedron(center, radius, color [, tess])` | Wireframe icosahedron |
+| `AddIcosahedron(center, radius, color [, tess])` | Filled icosahedron |
+| `AddWireCylinder(bottom, height, radius, color [, tess])` | Wireframe cylinder — bottom + height along +Y |
+| `AddCylinder(bottom, height, radius, color [, tess])` | Filled cylinder — bottom + height along +Y |
+| `AddWireCylinder(bottom, top, radius, color [, tess])` | Wireframe cylinder — explicit bottom/top positions |
+| `AddCylinder(bottom, top, radius, color [, tess])` | Filled cylinder — explicit bottom/top positions |
+| `AddWireCylinder(matrix, height, radius, color [, tess])` | Wireframe cylinder — matrix Y-row = axis, origin = bottom |
+| `AddCylinder(matrix, height, radius, color [, tess])` | Filled cylinder — matrix Y-row = axis, origin = bottom |
+| `AddWireCircle(center, radius, normal, color [, tess])` | Wireframe circle — center, radius and plane normal |
+| `AddCircle(center, radius, normal, color [, tess])` | Filled disc — center, radius and plane normal |
+| `AddWireCircle(matrix, radius, color [, tess])` | Wireframe circle — matrix Y-row = normal, origin = center |
+| `AddCircle(matrix, radius, color [, tess])` | Filled disc — matrix Y-row = normal, origin = center |
+
+### Text
+
+| Method | Description |
+|---|---|
+| `AddText(x, y, text, color [, bgColor, outlineColor])` | Screen-space text at pixel coordinates |
+| `AddText(worldPos, text, color [, bgColor, outlineColor])` | World-space text projected to screen |
+| `AddText(matrix, text, color [, bgColor, outlineColor])` | World-space text using matrix translation |
 
 ---
 
