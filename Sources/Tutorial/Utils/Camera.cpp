@@ -77,14 +77,14 @@ void Camera::UpdateBasedOnInput( float dt, float moveAxisX, float moveAxisY, flo
     {
         // Update the pitch & yaw angle based on look axes and mouse movement
         float yawDelta = lookAxisX * m_rotationYawSpeed * dt + mouseDeltaX;
-        float pitchDelta = lookAxisY * m_rotationPitchSpeed * dt + mouseDeltaY;
+        float pitchDelta = lookAxisY * m_rotationPitchSpeed * dt - mouseDeltaY;
 
         cameraPitchAngle -= pitchDelta;
         cameraYawAngle += yawDelta;
 
         // Limit pitch to straight up or straight down
-        cameraPitchAngle = __max( (float)-D3DX_PI / 2.0f + (float)D3DX_PI / 180.f, cameraPitchAngle );
-        cameraPitchAngle = __min( (float)+D3DX_PI / 2.0f - (float)D3DX_PI / 180.f, cameraPitchAngle );
+        cameraPitchAngle = max( (float)-D3DX_PI / 2.0f + (float)D3DX_PI / 180.f, cameraPitchAngle );
+        cameraPitchAngle = min( (float)+D3DX_PI / 2.0f - (float)D3DX_PI / 180.f, cameraPitchAngle );
     }
 
     // Calculate position delta
