@@ -52,12 +52,21 @@ struct InputGamePadState
 
 class Input
 {
-public:
+private:
     //---------------------------------------------------------------
     //	CONSTRUCTOR / DESTRUCTOR
     //---------------------------------------------------------------
     Input( );
     virtual ~Input( );
+
+public:
+    //---------------------------------------------------------------
+	//	SINGLETON FUNCTIONS
+	//---------------------------------------------------------------
+	static Input*                   Get() { return s_Instance; }
+
+	static void                     Create();
+	static void                     Destroy();
 
     //---------------------------------------------------------------
     //	MAIN FUNCTIONS
@@ -84,6 +93,8 @@ protected:
     float                           _NormalizeInput( BYTE axisValue );
     float                           _NormalizeInput( SHORT axisValue );
 
+	static Input*                   s_Instance;
+
 private:
     InputGamePadState               m_gamePadStates[XUSER_MAX_COUNT];
 
@@ -101,5 +112,7 @@ private:
     bool                            m_mouseButtons[3];  // 0=left, 1=right, 2=middle
 
 };
+
+#define g_input Input::Get()
 
 #endif // __INPUT_H__

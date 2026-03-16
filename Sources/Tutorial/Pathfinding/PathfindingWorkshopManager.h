@@ -37,13 +37,46 @@ public:
 
 protected:
 
+	void _DrawDebugMenu();
 	void _RunSignedAreaExercise();
+	void _RunInsideTriangleExercise();
 
 	static PathfindingWorkshopManager* s_Instance;
+	enum class Exercise
+	{
+		SignedArea,
+		InsideTriangle,
+		InsideTriangleCircumcircle,
+		ConvexHull,
+		RandomTriangulation,
+		DelaunayTriangulation,
+		ConstrainedDelaunay,
+		GridPathfinding,
+		AStarPathfinding,
+		_Count
+	};
+	const wchar_t* MENU_ITEMS_EXERCISES[static_cast<int>(Exercise::_Count)] = {
+		L"SignedArea",
+		L"InsideTriangle",
+		L"InsideTriangleCircumcircle",
+		L"ConvexHull",
+		L"RandomTriangulation",
+		L"DelaunayTriangulation",
+		L"ConstrainedDelaunay",
+		L"GridPathfinding",
+		L"AStarPathfinding",
+	};
 
-	float m_RotatingAngle{ 0.f };
-	Pathfinding::PathfindingWorkSheet* m_UserWorkSheet{ nullptr };
-	Pathfinding::PathfindingWorkSheet* m_ControlWorkSheet{ nullptr };
+
+	float m_rotatingAngle{ 0.f };
+	bool m_upPressed{ false };
+	bool m_downPressed{ false };
+	bool m_acceptPressed{ false };
+	bool m_showDebugMenu{ false };
+	int m_menuItem{ 0 };
+	Exercise m_selectedExercise;
+	Pathfinding::PathfindingWorkSheet* m_userWorkSheet{ nullptr };
+	Pathfinding::PathfindingWorkSheet* m_controlWorkSheet{ nullptr };
 };
 
 #define g_pathfindingWorkshopManager PathfindingWorkshopManager::Get()

@@ -4,7 +4,29 @@
 
 #include "Input.h"
 
+#include "..\Utils\Utils.h"
+
 static const float INPUT_DEADZONE_RATIO = 0.2f;   // 20%
+
+//-------------------------------------------------------------------
+
+Input* Input::s_Instance = NULL;
+
+void Input::Create()
+{
+	if (s_Instance)
+	{
+		myAssert(false, L"Input::Create() already called !");
+		return;
+	}
+	
+	s_Instance = new Input();
+}
+
+void Input::Destroy()
+{
+	SAFE_DELETE(s_Instance);
+}
 
 //-------------------------------------------------------------------
 

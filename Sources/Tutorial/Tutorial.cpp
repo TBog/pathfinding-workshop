@@ -40,8 +40,6 @@ int g_resolutionHeight = 720;
 Texture* g_HDRRenderTarget = NULL;
 Texture* g_depthBuffer = NULL;
 
-Input* g_input = NULL;
-
 World* g_world = NULL;
 
 DynVec<Entity*> g_visibleEntitiesList(1024, 1024);
@@ -187,7 +185,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 //--------------------------------------------------------------------------------------
 void InitializeCamera()
 {
-	D3DXVECTOR3 eyePos(10.f, 10.f, 0.f);
+	D3DXVECTOR3 eyePos(0.f, 10.f, -10.f);
 	//D3DXVECTOR3 lookAtPos(-2.5f, 10.f, -9.f);
 	D3DXVECTOR3 lookAtPos(0.f, 0.f, 0.f);
 	g_renderManager->GetCamera()->SetViewParams(eyePos, lookAtPos);
@@ -500,8 +498,7 @@ void InitializeApp()
 	g_hWnd = CreateWindow(g_wndClassName, L"Tutorial", WS_OVERLAPPEDWINDOW, 0, 0, g_resolutionWidth, g_resolutionHeight, 0, NULL, hInstance, 0);
 	myAssert(g_hWnd, L"CreateWindow failed!");
 
-	g_input = new Input();
-
+	Input::Create();
 	RenderManager::Create();
 	TexturesManager::Create();
 	ObjectsManager::Create();
@@ -532,14 +529,13 @@ void DestroyApp()
 
 	g_renderManager->DestroyDevice();
 
+	Input::Destroy();
 	EntitiesManager::Destroy();
 	ObjectsManager::Destroy();
 	TexturesManager::Destroy();
 	RenderManager::Destroy();
 	DebugRender::Destroy();
 	PathfindingWorkshopManager::Destroy();
-
-	SAFE_DELETE(g_input);
 
 	DestroyWindow(g_hWnd);
 	UnregisterClass(g_wndClassName, NULL);
