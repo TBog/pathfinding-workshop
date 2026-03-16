@@ -61,7 +61,7 @@ void Camera::SetProjParams( float fov, float aspect, float nearPlane, float farP
 
 //-------------------------------------------------------------------
 
-void Camera::UpdateBasedOnInput( float dt, float moveAxisX, float moveAxisY, float lookAxisX, float lookAxisY, float speedScale )
+void Camera::UpdateBasedOnInput( float dt, float moveAxisX, float moveAxisY, float lookAxisX, float lookAxisY, float speedScale, float mouseDeltaX, float mouseDeltaY )
 {
     // The axis basis vectors and camera position are stored inside the 
     // position matrix in the 4 rows of the camera's world matrix.
@@ -73,22 +73,22 @@ void Camera::UpdateBasedOnInput( float dt, float moveAxisX, float moveAxisY, flo
     float cameraPitchAngle = -atan2f( ZBasis->y, length );
 
     // If rotating the camera 
-    if ( (lookAxisX != 0) || (lookAxisY != 0) )
+    if ( (lookAxisX != 0) || (lookAxisY != 0) || (mouseDeltaX != 0.f) || (mouseDeltaY != 0.f) )
     {
-        // Update the pitch & yaw angle based on mouse movement
-        float yawDelta = lookAxisX * m_rotationYawSpeed * dt;
-        float pitchDelta = lookAxisY * m_rotationPitchSpeed * dt;
+        // Update the pitch & yaw angle based on look axes and mouse movement
+        float yawDelta = lookAxisX * m_rotationYawSpeed * dt + mouseDeltaX;
+        float pitchDelta = lookAxisY * m_rotationPitchSpeed * dt - mouseDeltaY;
 
         cameraPitchAngle -= pitchDelta;
         cameraYawAngle += yawDelta;
 
         // Limit pitch to straight up or straight down
-        cameraPitchAngle = __max( (float)-D3DX_PI / 2.0f + (float)D3DX_PI / 180.f, cameraPitchAngle );
-        cameraPitchAngle = __min( (float)+D3DX_PI / 2.0f - (float)D3DX_PI / 180.f, cameraPitchAngle );
+        cameraPitchAngle = max( (float)-D3DX_PI / 2.0f + (float)D3DX_PI / 180.f, cameraPitchAngle );
+        cameraPitchAngle = min( (float)+D3DX_PI / 2.0f - (float)D3DX_PI / 180.f, cameraPitchAngle );
     }
 
     // Calculate position delta
-    D3DXVECTOR3 velocity = speedScale * D3DXVECTOR3( moveAxisX, 0.f, moveAxisY );
+    D3DXVECTOR3 velocity = m_moveSpeed * speedScale * D3DXVECTOR3( moveAxisX, 0.f, moveAxisY );
     D3DXVECTOR3 posDelta = velocity * dt;
 
     // Make a rotation matrix based on the camera's yaw & pitch
