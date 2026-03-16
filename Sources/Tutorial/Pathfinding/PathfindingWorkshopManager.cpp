@@ -3,6 +3,7 @@
 #include "PathfindingWorkshopManager.h"
 #include "UserPathfindingWorkSheet.h"
 #include "ControlPathfindingWorkSheet.h"
+#include "Utils.h"
 
 #include "..\Utils\Entity.h"
 #include "..\Utils\Utils.h"
@@ -61,6 +62,9 @@ void PathfindingWorkshopManager::Update(float dt)
 		break;
 	case Exercise::InsideTriangle:
 		_RunInsideTriangleExercise();
+		break;
+	case Exercise::InsideTriangleCircumcircle:
+		_RunInsideTriangleCircumcircleExercise();
 		break;
 	default:
 		break;
@@ -268,15 +272,71 @@ void PathfindingWorkshopManager::_RunInsideTriangleExercise()
 		for (size_t i = 0; i < pointCount; i++)
 		{
 			const Vector2& p = points[i];
-			const Vector3 p3D = Vector3(p.x, 0.f, p.y);
-			//WCHAR msg[32];
-			//swprintf_s(msg, ARRAYSIZE(msg), L"<%d>", i);
-			//g_debugRender->AddText(p, msg, COLOR_BLACK, WithAlpha(COLOR_YELLOW, .75f));
 			const bool insideTriangle = m_controlWorkSheet->InsideTriangle(triangle[0], triangle[1], triangle[2], p);
 			const bool matchingInsideTriangle = m_userWorkSheet->InsideTriangle(triangle[0], triangle[1], triangle[2], p) == insideTriangle;
 			// use debug render to draw a red or green check for each test
 			const float alpha = insideTriangle ? .5f : .2f;
-			g_debugRender->AddIcosahedron(p3D, .05f, WithAlpha(matchingInsideTriangle ? COLOR_GREEN : COLOR_MAGENTA, alpha));
+			g_debugRender->AddIcosahedron(Vector3(p.x, 0.f, p.y), .05f, WithAlpha(matchingInsideTriangle ? COLOR_GREEN : COLOR_MAGENTA, alpha));
+		}
+	}
+}
+
+void PathfindingWorkshopManager::_RunInsideTriangleCircumcircleExercise()
+{
+	const Vector2 size(5.f, 5.f);
+	const size_t pointCount = 600;
+	std::vector<Vector2> points;
+	points.reserve(pointCount);
+	// generate non-random points inside the box
+	size_t gridCols = static_cast<size_t>(std::ceil(std::sqrt(pointCount)));
+	size_t gridRows = static_cast<size_t>(std::ceil(static_cast<float>(pointCount) / gridCols));
+
+	// Compute spacing
+	float dx = size.x / (gridCols - 1);
+	float dy = size.y / (gridRows - 1);
+
+	for (size_t row = 0; row < gridRows; ++row) {
+		for (size_t col = 0; col < gridCols; ++col) {
+			if (points.size() >= pointCount)
+				break;
+			float x = col * dx;
+			float y = row * dy;
+			points.emplace_back(x, y);
+		}
+	}
+
+	Vector2 triangle[3] = { Vector2(2.5f, 2.5f), Vector2(2.5f, 4.2f), Vector2(4.2f, 2.5f) };
+	// set triangle with the rotation from the previous exercise
+	{
+		const float angle = m_rotatingAngle;
+		const Vector2 center(2.5f, 2.5f);
+		for (int i = 0; i < 3; i++)
+		{
+			Vector2 dir = triangle[i] - center;
+			float cosA = cosf(angle);
+			float sinA = sinf(angle);
+			Vector2 rotatedDir(dir.x * cosA - dir.y * sinA, dir.x * sinA + dir.y * cosA);
+			triangle[i] = center + rotatedDir;
+		}
+	}
+
+	// draw triangle and points, using debug render to draw a red or green check for each point depending on whether the user's implementation of InsideCircumcircle matches the control implementation
+	{
+		const Vector3 tA = Vector3(triangle[0].x, 0.f, triangle[0].y);
+		const Vector3 tB = Vector3(triangle[1].x, 0.f, triangle[1].y);
+		const Vector3 tC = Vector3(triangle[2].x, 0.f, triangle[2].y);
+		g_debugRender->AddCircle((tB + tC) * .5f, sqrtf(DistSqr(triangle[1], triangle[2])) * .5f, Vector3(0.f, 1.f, 0.f), WithAlpha(COLOR_BLACK, .25f));
+		g_debugRender->AddLine(tA, tB, COLOR_WHITE);
+		g_debugRender->AddLine(tA, tC, COLOR_WHITE);
+		g_debugRender->AddLine(tC, tB, COLOR_WHITE);
+		for (size_t i = 0; i < pointCount; i++)
+		{
+			const Vector2& p = points[i];
+			const bool insideCircumcircle = m_controlWorkSheet->InsideCircumcircle(triangle[0], triangle[1], triangle[2], p);
+			const bool matchingInsideCircumcircle = m_userWorkSheet->InsideCircumcircle(triangle[0], triangle[1], triangle[2], p) == insideCircumcircle;
+			// use debug render to draw a red or green check for each test
+			const float alpha = insideCircumcircle ? .5f : .2f;
+			g_debugRender->AddIcosahedron(Vector3(p.x, 0.f, p.y), .05f, WithAlpha(matchingInsideCircumcircle ? COLOR_GREEN : COLOR_MAGENTA, alpha));
 		}
 	}
 }

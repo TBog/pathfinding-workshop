@@ -40,6 +40,7 @@ protected:
 	void _DrawDebugMenu();
 	void _RunSignedAreaExercise();
 	void _RunInsideTriangleExercise();
+	void _RunInsideTriangleCircumcircleExercise();
 
 	static PathfindingWorkshopManager* s_Instance;
 	enum class Exercise
