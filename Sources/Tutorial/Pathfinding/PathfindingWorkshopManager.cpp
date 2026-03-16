@@ -261,7 +261,7 @@ void PathfindingWorkshopManager::_RunInsideTriangleExercise()
 		const Vector3 tA = Vector3(triangle[0].x, 0.f, triangle[0].y);
 		const Vector3 tB = Vector3(triangle[1].x, 0.f, triangle[1].y);
 		const Vector3 tC = Vector3(triangle[2].x, 0.f, triangle[2].y);
-		g_debugRender->AddTriangle(tA, tB, tC, WithAlpha(COLOR_WHITE, .5f));
+		g_debugRender->AddTriangle(tA, tB, tC, WithAlpha(COLOR_BLACK, .25f));
 		g_debugRender->AddLine(tA, tB, COLOR_WHITE);
 		g_debugRender->AddLine(tA, tC, COLOR_WHITE);
 		g_debugRender->AddLine(tC, tB, COLOR_WHITE);
@@ -272,9 +272,11 @@ void PathfindingWorkshopManager::_RunInsideTriangleExercise()
 			//WCHAR msg[32];
 			//swprintf_s(msg, ARRAYSIZE(msg), L"<%d>", i);
 			//g_debugRender->AddText(p, msg, COLOR_BLACK, WithAlpha(COLOR_YELLOW, .75f));
-			const bool matchingInsideTriangle = m_userWorkSheet->InsideTriangle(triangle[0], triangle[1], triangle[2], p) == m_controlWorkSheet->InsideTriangle(triangle[0], triangle[1], triangle[2], p);
+			const bool insideTriangle = m_controlWorkSheet->InsideTriangle(triangle[0], triangle[1], triangle[2], p);
+			const bool matchingInsideTriangle = m_userWorkSheet->InsideTriangle(triangle[0], triangle[1], triangle[2], p) == insideTriangle;
 			// use debug render to draw a red or green check for each test
-			g_debugRender->AddIcosahedron(p3D, .05f, matchingInsideTriangle ? COLOR_GREEN : COLOR_MAGENTA);
+			const float alpha = insideTriangle ? .5f : .2f;
+			g_debugRender->AddIcosahedron(p3D, .05f, WithAlpha(matchingInsideTriangle ? COLOR_GREEN : COLOR_MAGENTA, alpha));
 		}
 	}
 }
