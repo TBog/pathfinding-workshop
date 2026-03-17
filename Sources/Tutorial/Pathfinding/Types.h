@@ -1,6 +1,8 @@
 #pragma once
 
+#include <vector>
 #include <limits>
+#include <stdexcept>
 
 namespace Pathfinding
 {
@@ -27,4 +29,51 @@ namespace Pathfinding
 	}
 
 	inline const Vector2 VECTOR2_NAN = Vector2(std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN());
+
+	template<typename T>
+	class Grid2D
+	{
+	public:
+		Grid2D(size_t rows, size_t cols, const T& value = T())
+			: m_rows(rows), m_cols(cols), m_data(rows, std::vector<T>(cols, value))
+		{
+		}
+
+		// Access element at (row, col)
+		T& operator()(size_t row, size_t col)
+		{
+			if (row >= m_rows || col >= m_cols)
+				throw std::out_of_range("Grid2D index out of range");
+			return m_data[row][col];
+		}
+
+		const T& operator()(size_t row, size_t col) const
+		{
+			if (row >= m_rows || col >= m_cols)
+				throw std::out_of_range("Grid2D index out of range");
+			return m_data[row][col];
+		}
+
+		// Row access
+		std::vector<T>& operator[](size_t row) {
+			if (row >= m_rows)
+				throw std::out_of_range("Grid2D row index out of range");
+			return m_data[row];
+		}
+
+		// Row access
+		const std::vector<T>& operator[](size_t row) const {
+			if (row >= m_rows)
+				throw std::out_of_range("Grid2D row index out of range");
+			return m_data[row];
+		}
+
+		size_t GetRowCount() const { return m_rows; }
+		size_t GetColCount() const { return m_cols; }
+
+	private:
+		size_t m_rows;
+		size_t m_cols;
+		std::vector<std::vector<T>> m_data;
+	};
 }

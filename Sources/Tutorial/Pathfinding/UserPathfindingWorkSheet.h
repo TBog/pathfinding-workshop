@@ -55,7 +55,7 @@ namespace Pathfinding
 		{
 		}
 
-		void GridPathfinding(const DynVec<DynVec<int>>& map, const Cell& start, const Cell& goal, DynVec<Cell>& outPath)
+		void GridPathfinding(const Grid2D<int>& map, const Cell& start, const Cell& goal, DynVec<Cell>& outPath)
 		{
 		}
 

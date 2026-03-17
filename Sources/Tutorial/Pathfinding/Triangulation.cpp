@@ -19,7 +19,7 @@ namespace Pathfinding
 		t3Id = _t3;
 	}
 
-	int Triangle::GetTriangleId(int t)
+	int Triangle::GetTriangleId(int t) const
 	{
 		if (t == 1)
 		{
@@ -37,7 +37,7 @@ namespace Pathfinding
 		return -1;
 	}
 
-	int Triangle::GetPointId(int p)
+	int Triangle::GetPointId(int p) const
 	{
 		if (p == 1)
 		{
@@ -55,7 +55,7 @@ namespace Pathfinding
 		return -1;
 	}
 
-	void Triangle::GetOtherPoints(int p1Id, int& p1, int& p2)
+	void Triangle::GetOtherPoints(int p1Id, int& p1, int& p2) const
 	{
 		int idx = FindVertex(p1Id);
 		idx = idx == 3 ? 1 : idx + 1;
@@ -64,7 +64,7 @@ namespace Pathfinding
 		p2 = GetPointId(idx);
 	}
 
-	int Triangle::GetNeighbourTriangle(int p1Idx, int p2Idx)
+	int Triangle::GetNeighbourTriangle(int p1Idx, int p2Idx) const
 	{
 		if (p1Idx > p2Idx)
 		{
@@ -106,7 +106,7 @@ namespace Pathfinding
 		}
 	}
 
-	int Triangle::FindVertex(int pointId)
+	int Triangle::FindVertex(int pointId) const
 	{
 		if (p1Id == pointId)
 		{
@@ -123,7 +123,7 @@ namespace Pathfinding
 		return 0;
 	}
 
-	TriangleNeighbourInfo Triangulation::GetTriangleNeighbouringInfo(int t1Idx, int t2Idx)
+	TriangleNeighbourInfo Triangulation::GetTriangleNeighbouringInfo(int t1Idx, int t2Idx) const
 	{
 		Triangle t1 = triangles[t1Idx];
 		Triangle t2 = triangles[t2Idx];
@@ -250,7 +250,7 @@ namespace Pathfinding
 		return tId;
 	}
 
-	void Triangulation::GetTriangleNeighbours(int tId, DynVec<TriangleNeighbourInfo>& neighbours)
+	void Triangulation::GetTriangleNeighbours(int tId, DynVec<TriangleNeighbourInfo>& neighbours) const
 	{
 		Triangle t = triangles[tId];
 		for (int i = 1; i <= 3; i++)
@@ -263,7 +263,7 @@ namespace Pathfinding
 		}
 	}
 
-	void Triangulation::GetTriangles(DynVec<Triangle>& ret)
+	void Triangulation::GetTriangles(DynVec<Triangle>& ret) const
 	{
 		for (int i = 0; i < triangles.GetSize(); i++)
 		{
@@ -420,12 +420,12 @@ namespace Pathfinding
 		}
 	} 
 
-	float SignedArea(const Vector2& p1, const Vector2& p2, const Vector2& p3)
+	static float SignedArea(const Vector2& p1, const Vector2& p2, const Vector2& p3)
 	{
 		return p1.x * p2.y + p2.x * p3.y + p3.x * p1.y - p1.x * p3.y - p3.x * p2.y - p2.x * p1.y;
 	}
 	
-	bool InsideTriangle(const Vector2& p1, const Vector2& p2, const Vector2& p3, const Vector2& p4)
+	static bool InsideTriangle(const Vector2& p1, const Vector2& p2, const Vector2& p3, const Vector2& p4)
 	{
 		const float s1 = SignedArea(p1, p2, p4);
 		const float s2 = SignedArea(p2, p3, p4);
@@ -434,7 +434,7 @@ namespace Pathfinding
 		return (s1 <= 0 && s2 <= 0 && s3 <= 0) || (s1 >= 0 && s2 >= 0 && s3 >= 0);
 	}
 
-	int Triangulation::FindTriangle(Vector2 point)
+	int Triangulation::FindTriangle(Vector2 point) const
 	{
 		for (int i = 0; i < triangles.GetSize(); i += 1)
 		{
@@ -452,7 +452,7 @@ namespace Pathfinding
 		return -1;
 	}
 
-	bool Triangulation::CheckLineOfSight(Vector2 p1, Vector2 p2)
+	bool Triangulation::CheckLineOfSight(Vector2 p1, Vector2 p2) const
 	{
 		LOSTrianglePath.Clear();
 

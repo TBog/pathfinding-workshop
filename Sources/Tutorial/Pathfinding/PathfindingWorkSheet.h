@@ -54,7 +54,7 @@ namespace Pathfinding
 		// Pathfinding Exercises
 		//---------------------------------------------------------------
 
-		virtual void GridPathfinding(const DynVec<DynVec<int>>& map, const Cell& start, const Cell& goal, DynVec<Cell>& outPath) = 0;
+		virtual void GridPathfinding(const Grid2D<int>& map, const Cell& start, const Cell& goal, DynVec<Cell>& outPath) = 0;
 		virtual void AStarPathfinding(const Triangulation& triangulation, const Vector2& startPoint, const Vector2& goalPoint, DynVec<Vector2>& outPath) = 0;
 		virtual void SmoothPath(const Triangulation& triangulation, const DynVec<Vector2>& path, DynVec<Vector2>& outPath) = 0;
 	};
