@@ -41,6 +41,12 @@ namespace Pathfinding
 
 		void ConvexHull(const DynVec<Vector2>& points, DynVec<int>& outHull)
 		{
+			if (points.GetSize() > 2)
+			{
+				outHull.Add(0);
+				outHull.Add(1);
+				outHull.Add(2);
+			}
 		}
 
 		void RandomTriangulation(const DynVec<Vector2>& points, Triangulation& triangulation)

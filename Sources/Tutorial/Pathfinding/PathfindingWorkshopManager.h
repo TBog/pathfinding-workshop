@@ -41,6 +41,7 @@ protected:
 	void _RunSignedAreaExercise();
 	void _RunInsideTriangleExercise();
 	void _RunInsideTriangleCircumcircleExercise();
+	void _RunConvexHullExercise();
 
 	static PathfindingWorkshopManager* s_Instance;
 	enum class Exercise

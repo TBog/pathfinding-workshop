@@ -66,6 +66,9 @@ void PathfindingWorkshopManager::Update(float dt)
 	case Exercise::InsideTriangleCircumcircle:
 		_RunInsideTriangleCircumcircleExercise();
 		break;
+	case Exercise::ConvexHull:
+		_RunConvexHullExercise();
+		break;
 	default:
 		break;
 	}
@@ -339,4 +342,43 @@ void PathfindingWorkshopManager::_RunInsideTriangleCircumcircleExercise()
 			g_debugRender->AddIcosahedron(Vector3(p.x, 0.f, p.y), .05f, WithAlpha(matchingInsideCircumcircle ? COLOR_GREEN : COLOR_MAGENTA, alpha));
 		}
 	}
+}
+
+static void _DrawConvexHull(const DynVec<Vector2>& points, const DynVec<int>& hull, Color color, float posY = 0.f)
+{
+	const int hullSize = hull.GetSize();
+	for (int i = 0; i < hullSize; i++)
+	{
+		const Vector2& p1 = points[hull[i]];
+		const Vector2& p2 = points[hull[(i + 1) % hullSize]];
+		g_debugRender->AddLine(Vector3(p1.x, posY, p1.y), Vector3(p2.x, posY, p2.y), color);
+	}
+}
+
+void PathfindingWorkshopManager::_RunConvexHullExercise()
+{
+	const int pointCount = 16;
+	DynVec<Vector2> points(32, 32);
+	points.Add({0.f, 0.f});
+	for (int i = 0; i < pointCount; i++)
+	{
+		float angle = m_rotatingAngle + (float)i / (float)pointCount * 2.f * (float)D3DX_PI;
+		float radius = 2.f + cosf(angle * 3.f) * .5f; // Add some noise to the radius for a more interesting shape
+		points.Add(Vector2(cosf(angle), sinf(angle)) * radius + Vector2(2.5f, 2.5f));
+	}
+	points.Add({5.f, 5.f});
+
+	DynVec<int> controlHull(points.GetSize(), 32);
+	m_controlWorkSheet->ConvexHull(points, controlHull);
+	DynVec<int> userHull(points.GetSize(), 32);
+	m_userWorkSheet->ConvexHull(points, userHull);
+
+	for (int i = 0; i < points.GetSize(); i += 1)
+	{
+		const Vector3 p(points[i].x, 0.f, points[i].y);
+		g_debugRender->AddIcosahedron(p, .05f, COLOR_WHITE);
+	}
+	
+	_DrawConvexHull(points, userHull, COLOR_YELLOW);
+	_DrawConvexHull(points, controlHull, WithAlpha(COLOR_WHITE, 0.5f), .05f);
 }
