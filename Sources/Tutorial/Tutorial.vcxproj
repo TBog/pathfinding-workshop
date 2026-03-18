@@ -151,7 +151,6 @@
   <ItemGroup>
     <ClCompile Include="Extern\tinyxml2.cpp" />
     <ClCompile Include="Extern\tiny_obj_loader.cc" />
-    <ClCompile Include="Pathfinding\PathfindingWorkSheet.cpp" />
     <ClCompile Include="Pathfinding\PathfindingWorkshopManager.cpp" />
     <ClCompile Include="Pathfinding\Triangulation.cpp" />
     <ClCompile Include="Render\Clouds.cpp" />

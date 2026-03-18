@@ -143,6 +143,15 @@
     <ClInclude Include="Pathfinding\ControlPathfindingWorkSheet.h">
       <Filter>Pathfinding</Filter>
     </ClInclude>
+    <ClInclude Include="Pathfinding\Triangulation.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Pathfinding\Types.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Pathfinding\Utils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Tutorial.cpp" />
@@ -221,9 +230,7 @@
     <ClCompile Include="Pathfinding\PathfindingWorkshopManager.cpp">
       <Filter>Pathfinding</Filter>
     </ClCompile>
-    <ClCompile Include="Pathfinding\PathfindingWorkSheet.cpp">
-      <Filter>Pathfinding</Filter>
-    </ClCompile>
+    <ClCompile Include="Pathfinding\Triangulation.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Tutorial.rc">
@@ -296,5 +303,6 @@
     <FxCompile Include="..\..\bin\Shaders\Clouds_apply_PS.fx">
       <Filter>__Shaders__</Filter>
     </FxCompile>
+    <FxCompile Include="..\..\bin\Shaders\DebugText_PS.fx" />
   </ItemGroup>
 </Project>
