@@ -53,7 +53,7 @@ namespace Pathfinding
 		{
 		}
 
-		void EdgeFlipping(const Triangulation& inTriangulation, Triangulation& outTriangulation)
+		void EdgeFlipping(Triangulation& triangulation, size_t maxIterations)
 		{
 		}
 

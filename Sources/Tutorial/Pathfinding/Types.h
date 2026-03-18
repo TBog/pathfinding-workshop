@@ -13,6 +13,7 @@ namespace Pathfinding
 	typedef D3DXCOLOR Color;
 
 	// Common color definitions
+	inline const Color COLOR_TRANSPARENT = Color(1.0f, 0.0f, 1.0f, 0.0f);
 	inline const Color COLOR_WHITE = Color(1.0f, 1.0f, 1.0f, 1.0f);
 	inline const Color COLOR_BLACK = Color(0.0f, 0.0f, 0.0f, 1.0f);
 	inline const Color COLOR_RED = Color(1.0f, 0.0f, 0.0f, 1.0f);

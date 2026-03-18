@@ -22,6 +22,10 @@ namespace Pathfinding
 		bool isBlocked = false;
 
 		Triangle(int _id, int _p1, int _p2, int _p3, int _t1, int _t2, int _t3);
+	protected:
+		// Deep copy constructor
+		Triangle(const Triangle& other);
+	public:
 
 		int GetTriangleId(int t) const;
 
@@ -61,22 +65,22 @@ namespace Pathfinding
 		int t3Id; // p4-p2
 		int t4Id; // p4-p3
 
-		int GetNeighbourId()
+		int GetNeighbourId() const
 		{
 			return neighbourId;
 		}
 
-		int GetCommonPoint1Id()
+		int GetCommonPoint1Id() const
 		{
 			return p2Id;
 		}
 
-		int GetCommonPoint2Id()
+		int GetCommonPoint2Id() const
 		{
 			return p3Id;
 		}
 
-		int GetNeighbourOuterPointId()
+		int GetNeighbourOuterPointId() const
 		{
 			return p4Id;
 		}
@@ -85,17 +89,28 @@ namespace Pathfinding
 	struct Triangulation
 	{
 		DynVec<Vector2> points;
+	protected:
 		DynVec<Triangle> triangles;
+	public:
 		std::vector<std::vector<int>> pointNeighbours;
 		DynVec<int> emptyTriangles;
+		
+		Triangulation()
+			: points(32, 64)
+			, triangles(8, 16)
+			, pointNeighbours()
+			, emptyTriangles(1, 4)
+			, LOSTrianglePath(1, 8)
+		{
+		}
 
 		// Deep copy constructor
 		Triangulation(const Triangulation& other)
-			: points(other.points.GetSize(), other.points.GetSize())
-			, triangles(other.triangles.GetSize(), other.triangles.GetSize())
+			: points(other.points.GetSize(), 64)
+			, triangles(other.triangles.GetSize(), 32)
 			, pointNeighbours(other.pointNeighbours)
-			, emptyTriangles(other.emptyTriangles.GetSize(), other.emptyTriangles.GetSize())
-			, LOSTrianglePath(other.LOSTrianglePath.GetSize(), other.LOSTrianglePath.GetSize())
+			, emptyTriangles(other.emptyTriangles.GetSize(), 16)
+			, LOSTrianglePath(other.LOSTrianglePath.GetSize(), 16)
 		{
 			for (int i = 0; i < other.points.GetSize(); ++i)
 				points.Add(other.points[i]);
@@ -173,6 +188,11 @@ namespace Pathfinding
 		const Triangle& GetTriangle(int triangleId) const
 		{
 			return triangles[triangleId];
+		}
+
+		int GetRegisteredTriangleCount() const
+		{
+			return triangles.GetSize();
 		}
 
 		void GetTriangleNeighbours(int tId, DynVec<TriangleNeighbourInfo>& outNeighbours) const;

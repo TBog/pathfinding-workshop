@@ -8,7 +8,6 @@
 
 namespace Pathfinding
 {
-
 	class ControlPathfindingWorkSheet : public PathfindingWorkSheet
 	{
 		struct IndexedPoint {
@@ -135,9 +134,9 @@ namespace Pathfinding
 
 			// Create initial triangles from hull
 			int prevIdx = -1;
-			for (int i = 1; i < hull.GetSize() - 1; ++i)
+			for (int i = 2; i < hull.GetSize(); ++i)
 			{
-				int idx = triangulation.AddTriangle(hull[0], hull[i], hull[i + 1]);
+				int idx = triangulation.AddTriangle(hull[0], hull[i - 1], hull[i]);
 				if (prevIdx != -1)
 					triangulation.LinkTriangles(idx, prevIdx);
 				prevIdx = idx;
@@ -149,88 +148,101 @@ namespace Pathfinding
 				if (used[i])
 					continue;
 
-				int trIdx = -1;
-				DynVec<Triangle> triangleList(points.GetSize() / 3, points.GetSize() / 3);
-				triangulation.GetTriangles(triangleList);
-				for (int j = 0; j < triangleList.GetSize(); ++j)
+				int trId = -1;
+				DynVec<Triangle> triangles(triangulation.GetRegisteredTriangleCount(), 32);
+				triangulation.GetTriangles(triangles);
+				for (int j = 0; j < triangles.GetSize(); ++j)
 				{
-					Vector2 p1 = triangulation.GetPoint(triangleList[j].p1Id);
-					Vector2 p2 = triangulation.GetPoint(triangleList[j].p2Id);
-					Vector2 p3 = triangulation.GetPoint(triangleList[j].p3Id);
+					const Triangle& tri = triangles[j];
+
+					Vector2 p1 = triangulation.GetPoint(tri.p1Id);
+					Vector2 p2 = triangulation.GetPoint(tri.p2Id);
+					Vector2 p3 = triangulation.GetPoint(tri.p3Id);
+
 					if (InsideTriangle(p1, p2, p3, points[i]))
 					{
-						trIdx = j;
+						trId = tri.id;
 						break;
 					}
 				}
 
-				if (trIdx == -1)
-					continue; // Point not inside any triangle
+				if (trId == -1)
+				{
+					WCHAR msg[512];
+					swprintf_s(msg, ARRAYSIZE(msg), L"[ControlPathfindingWorkSheet::RandomTriangulation] Didn't find Triangle. Point: %d", i);
+					ShowErrorMessageBox(msg);
+					continue;
+				}
 
-				Triangle backup = triangleList[trIdx];
-				triangulation.RemoveTriangle(trIdx);
+				int p1Id = triangles[trId].p1Id;
+				int p2Id = triangles[trId].p2Id;
+				int p3Id = triangles[trId].p3Id;
 
-				int t1Idx = triangulation.AddTriangle(backup.p1Id, backup.p2Id, i);
-				int t2Idx = triangulation.AddTriangle(backup.p2Id, backup.p3Id, i);
-				int t3Idx = triangulation.AddTriangle(backup.p1Id, backup.p3Id, i);
+				int t1Id = triangles[trId].t1Id;
+				int t2Id = triangles[trId].t2Id;
+				int t3Id = triangles[trId].t3Id;
 
-				// Link triangles
-				triangulation.LinkTriangles(t1Idx, backup.t1Id);
-				triangulation.LinkTriangles(t1Idx, t2Idx);
-				triangulation.LinkTriangles(t1Idx, t3Idx);
+				triangulation.RemoveTriangle(trId);
 
-				triangulation.LinkTriangles(t2Idx, backup.t2Id);
-				triangulation.LinkTriangles(t2Idx, t3Idx);
-				triangulation.LinkTriangles(t2Idx, t1Idx);
+				int t5 = triangulation.AddTriangle(p1Id, p2Id, i);
+				int t6 = triangulation.AddTriangle(p2Id, p3Id, i);
+				int t7 = triangulation.AddTriangle(p3Id, p1Id, i);
 
-				triangulation.LinkTriangles(t3Idx, backup.t3Id);
-				triangulation.LinkTriangles(t3Idx, t1Idx);
-				triangulation.LinkTriangles(t3Idx, t2Idx);
+				triangulation.LinkTriangles(t5, t1Id);
+				triangulation.LinkTriangles(t5, t6);
+				triangulation.LinkTriangles(t5, t7);
+
+				triangulation.LinkTriangles(t6, t2Id);
+				triangulation.LinkTriangles(t6, t5);
+				triangulation.LinkTriangles(t6, t7);
+
+				triangulation.LinkTriangles(t7, t3Id);
+				triangulation.LinkTriangles(t7, t5);
+				triangulation.LinkTriangles(t7, t6);
 			}
 		}
 
-		void EdgeFlipping(const Triangulation& inTriangulation, Triangulation& outTriangulation)
+		void EdgeFlipping(Triangulation& triangulation, size_t maxIterations)
 		{
-			// Copy input triangulation to output
-			outTriangulation = inTriangulation;
-
 			bool swapped = true;
-			int iterations = 0;
+			size_t iterations = 0;
+			DynVec<TriangleNeighbourInfo> neighbours(3, 3);
 
 			// Get initial triangle count for kill switch
-			DynVec<Triangle> triangles(outTriangulation.points.GetSize() / 3, outTriangulation.points.GetSize() / 3);
-			outTriangulation.GetTriangles(triangles);
-			int maxIteration = triangles.GetSize() * 10;
-
-			while (swapped && iterations < maxIteration)
+			DynVec<Triangle> triangles(triangulation.GetRegisteredTriangleCount(), 32);
+			if (maxIterations == 0)
 			{
+				maxIterations = static_cast<size_t>(triangulation.GetRegisteredTriangleCount()) * 10;
+			}
+
+			while (swapped && iterations < maxIterations)
+			{
+				// Iterations is to make sure we stop. If there are 4 points on a circle this algorithm could go endless, iterations acts as a kill switch.
 				iterations++;
 				swapped = false;
 
 				// Refresh triangle list each iteration
-				outTriangulation.GetTriangles(triangles);
+				triangulation.GetTriangles(triangles);
 
 				for (int i = 0; i < triangles.GetSize() && !swapped; ++i)
 				{
-					DynVec<TriangleNeighbourInfo> neighbours(4, 4);
-					outTriangulation.GetTriangleNeighbours(i, neighbours);
+					const Triangle& tri = triangles[i];
+					triangulation.GetTriangleNeighbours(tri.id, neighbours);
 
 					for (int j = 0; j < neighbours.GetSize() && !swapped; ++j)
 					{
+						const TriangleNeighbourInfo& info = neighbours[j];
 						const Triangle& t1 = triangles[i];
-						const Triangle& t2 = outTriangulation.GetTriangle(neighbours[j].GetNeighbourId());
+						const Triangle& t2 = triangulation.GetTriangle(info.GetNeighbourId());
 
-						Vector2 p1 = outTriangulation.GetPoint(t1.p1Id);
-						Vector2 p2 = outTriangulation.GetPoint(t1.p2Id);
-						Vector2 p3 = outTriangulation.GetPoint(t1.p3Id);
-						Vector2 p4 = outTriangulation.GetPoint(neighbours[j].GetNeighbourOuterPointId());
+						const Vector2& p1 = triangulation.GetPoint(info.p1Id);
+						const Vector2& p2 = triangulation.GetPoint(info.GetCommonPoint1Id());
+						const Vector2& p3 = triangulation.GetPoint(info.GetCommonPoint2Id());
+						const Vector2& p4 = triangulation.GetPoint(info.GetNeighbourOuterPointId());
 
 						if (InsideCircumcircle(p1, p2, p3, p4))
 						{
-							int t1Idx = i;
-							int t2Idx = neighbours[j].GetNeighbourId();
-
-							outTriangulation.FlipTrianglesEdge(t1Idx, t2Idx);
+							triangulation.FlipTrianglesEdge(t1.id, t2.id);
 							swapped = true;
 						}
 					}
@@ -240,7 +252,7 @@ namespace Pathfinding
 
 		int GetConstraintStartTriangle(Triangulation triangulation, int p1Id, int p2Id)
 		{
-			DynVec<Triangle> triangles(triangulation.triangles.GetSize(), triangulation.triangles.GetSize());
+			DynVec<Triangle> triangles(triangulation.GetRegisteredTriangleCount(), 32);
 			triangulation.GetTriangles(triangles);
 			for (int i = 0; i < triangles.GetSize(); i++)
 			{
@@ -270,7 +282,7 @@ namespace Pathfinding
 
 		bool TriangulationContainsEdge(const Triangulation& triangulation, int p1, int p2)
 		{
-			DynVec<Triangle> triangles(triangulation.triangles.GetSize(), triangulation.triangles.GetSize());
+			DynVec<Triangle> triangles(triangulation.GetRegisteredTriangleCount(), 32);
 			triangulation.GetTriangles(triangles);
 			for (int i = 0; i < triangles.GetSize(); i++)
 			{

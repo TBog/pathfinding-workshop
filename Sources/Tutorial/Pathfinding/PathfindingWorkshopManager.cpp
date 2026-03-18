@@ -69,6 +69,12 @@ void PathfindingWorkshopManager::Update(float dt)
 	case Exercise::ConvexHull:
 		_RunConvexHullExercise();
 		break;
+	case Exercise::RandomTriangulation:
+		_RunRandomTriangulationExercise();
+		break;
+	case Exercise::DelaunayTriangulation:
+		_RunDelaunayTriangulationExercise();
+		break;
 	default:
 		break;
 	}
@@ -76,7 +82,7 @@ void PathfindingWorkshopManager::Update(float dt)
 	m_userWorkSheet->Update(dt);
 	m_controlWorkSheet->Update(dt);
 
-	if (!g_input->IsKeyPressed(VK_SPACE))
+	if (g_input->IsKeyPressed(VK_SPACE))
 	{
 		m_rotatingAngle += dt * .5f;
 	}
@@ -382,3 +388,168 @@ void PathfindingWorkshopManager::_RunConvexHullExercise()
 	_DrawConvexHull(points, userHull, COLOR_YELLOW);
 	_DrawConvexHull(points, controlHull, WithAlpha(COLOR_WHITE, 0.5f), .05f);
 }
+
+void _DrawTriangles(Triangulation& triangulation, const Color& wireColor, const Color& triangleColor = COLOR_TRANSPARENT)
+{
+	DynVec<Vector2>& points = triangulation.points;
+	DynVec<Triangle> triangles(triangulation.GetRegisteredTriangleCount(), 32);
+	triangulation.GetTriangles(triangles);
+	for (int i = 0; i < triangles.GetSize(); i += 1)
+	{
+		const Triangle& tri = triangles[i];
+		const Vector3 p1 = Vector3(points[tri.p1Id].x, 0.f, points[tri.p1Id].y);
+		const Vector3 p2 = Vector3(points[tri.p2Id].x, 0.f, points[tri.p2Id].y);
+		const Vector3 p3 = Vector3(points[tri.p3Id].x, 0.f, points[tri.p3Id].y);
+		if (triangleColor.a > FLT_EPSILON)
+		{
+			g_debugRender->AddTriangle(p1, p2, p3, triangleColor);
+		}
+		if (wireColor.a > FLT_EPSILON)
+		{
+			g_debugRender->AddLine(p1, p2, wireColor);
+			g_debugRender->AddLine(p1, p3, wireColor);
+			g_debugRender->AddLine(p3, p2, wireColor);
+		}
+	}
+}
+
+void _DrawTriangleNeighbors(Triangulation& triangulation, int triangleId, const Color& bgColor, const Color& fgColor)
+{
+	const DynVec<Vector2>& points = triangulation.GetPoints();
+	DynVec<Triangle> triangles(triangulation.GetRegisteredTriangleCount(), 32);
+	triangulation.GetTriangles(triangles);
+	for (int i = 0; i < triangles.GetSize(); i += 1)
+	{
+		const Triangle& tri = triangles[i];
+
+		if (triangleId == tri.id)
+		{
+			g_debugRender->AddTriangle(Vector3(points[tri.p1Id].x, 0.f, points[tri.p1Id].y), Vector3(points[tri.p2Id].x, 0.f, points[tri.p2Id].y), Vector3(points[tri.p3Id].x, 0.f, points[tri.p3Id].y), WithAlpha(bgColor, .5f));
+		}
+
+		Vector3 center = Vector3(points[tri.p1Id].x, 0.f, points[tri.p1Id].y) + Vector3(points[tri.p2Id].x, 0.f, points[tri.p2Id].y) + Vector3(points[tri.p3Id].x, 0.f, points[tri.p3Id].y);
+		center *= (1.f / 3.f);
+		g_debugRender->AddSphere(center, .04f, WithAlpha(bgColor, .25f));
+		WCHAR msg[32];
+		swprintf_s(msg, ARRAYSIZE(msg), L"[%d]", tri.id);
+		g_debugRender->AddText(center, msg, fgColor, bgColor);
+
+		if (triangleId == -1 || triangleId == tri.id)
+		{
+			DynVec<TriangleNeighbourInfo> neighbours(3, 1);
+			triangulation.GetTriangleNeighbours(tri.id, neighbours);
+			for (int j = 0; j < neighbours.GetSize(); j++)
+			{
+				const TriangleNeighbourInfo& info = neighbours[j];
+				const Triangle& neighborTri = triangulation.GetTriangle(info.neighbourId);
+				Vector3 neighborCenter = Vector3(points[neighborTri.p1Id].x, 0.f, points[neighborTri.p1Id].y) + Vector3(points[neighborTri.p2Id].x, 0.f, points[neighborTri.p2Id].y) + Vector3(points[neighborTri.p3Id].x, 0.f, points[neighborTri.p3Id].y);
+				neighborCenter *= (1.f / 3.f);
+				neighborCenter.y += .05f; // lift neighbor center a bit to prevent z-fighting
+				g_debugRender->AddSphere(neighborCenter, .02f, fgColor);
+				g_debugRender->AddLine(center, neighborCenter, fgColor);
+			}
+		}
+	}
+}
+
+void PathfindingWorkshopManager::_RunRandomTriangulationExercise()
+{
+	const int pointCount = 16;
+	DynVec<Vector2> points(32, 32);
+	points.Add({ 0.f, 0.f });
+	for (int i = 0; i < pointCount; i++)
+	{
+		float angle = m_rotatingAngle + (float)i / (float)pointCount * 2.f * (float)D3DX_PI;
+		float radius = 2.f + cosf(angle * 3.f) * .5f; // Add some noise to the radius for a more interesting shape
+		points.Add(Vector2(cosf(angle), sinf(angle)) * radius + Vector2(2.5f, 2.5f));
+	}
+	points.Add({ 5.f, 5.f });
+
+	for (int i = 0; i < points.GetSize(); i += 1)
+	{
+		const Vector3 p(points[i].x, 0.f, points[i].y);
+		g_debugRender->AddIcosahedron(p, .05f, COLOR_WHITE);
+	}
+
+	Triangulation triangulation;
+	m_userWorkSheet->RandomTriangulation(points, triangulation);
+
+	Color wireColor = COLOR_YELLOW;
+	if (triangulation.GetRegisteredTriangleCount() == 0)
+	{
+		wireColor = COLOR_WHITE;
+		m_controlWorkSheet->RandomTriangulation(points, triangulation);
+	}
+	
+	_DrawTriangles(triangulation, wireColor, WithAlpha(COLOR_BLACK, .25f));
+}
+
+void PathfindingWorkshopManager::_RunDelaunayTriangulationExercise()
+{
+	const int pointCount = 16;
+	DynVec<Vector2> points(32, 32);
+	points.Add({ 0.f, 0.f });
+	for (int i = 0; i < pointCount; i++)
+	{
+		float angle = m_rotatingAngle + (float)i / (float)pointCount * 2.f * (float)D3DX_PI;
+		float radius = 2.f + cosf(angle * 3.f) * .5f; // Add some noise to the radius for a more interesting shape
+		points.Add(Vector2(cosf(angle), sinf(angle)) * radius + Vector2(2.5f, 2.5f));
+	}
+	points.Add({ 5.f, 5.f });
+
+	for (int i = 0; i < points.GetSize(); i += 1)
+	{
+		const Vector3 p(points[i].x, 0.f, points[i].y);
+		g_debugRender->AddIcosahedron(p, .05f, COLOR_WHITE);
+	}
+
+	static int triangleId = -1;
+	static int iterations = 0;
+	Triangulation triangulation;
+	Color wireColor = COLOR_YELLOW;
+
+	m_userWorkSheet->RandomTriangulation(points, triangulation);
+	m_userWorkSheet->EdgeFlipping(triangulation);
+
+	if (triangulation.GetRegisteredTriangleCount() == 0)
+	{
+		wireColor = COLOR_WHITE;
+		m_controlWorkSheet->RandomTriangulation(points, triangulation);
+		m_controlWorkSheet->EdgeFlipping(triangulation, iterations);
+
+		//static bool m_leftPressed = false;
+		//static bool m_rightPressed = false;
+
+		//const bool upPressed = g_input->IsKeyPressed(VK_UP);
+		//const bool downPressed = g_input->IsKeyPressed(VK_DOWN);
+		//const bool leftPressed = g_input->IsKeyPressed(VK_LEFT);
+		//const bool rightPressed = g_input->IsKeyPressed(VK_RIGHT);
+		//const bool upJustPressed = !m_upPressed && upPressed;
+		//const bool downJustPressed = !m_downPressed && downPressed;
+		//const bool leftJustPressed = !m_leftPressed && leftPressed;
+		//const bool rightJustPressed = !m_rightPressed && rightPressed;
+
+		//m_upPressed = upPressed;
+		//m_downPressed = downPressed;
+		//m_leftPressed = leftPressed;
+		//m_rightPressed = rightPressed;
+
+		//if (upJustPressed)
+		//	iterations += 1;
+		//if (downJustPressed)
+		//	iterations -= (iterations - 1) < 0 ? 0 : 1;
+		//if (leftJustPressed)
+		//	triangleId -= (triangleId - 1) < -1 ? 0 : 1;
+		//if (rightJustPressed)
+		//	triangleId += (triangleId + 1) > triangulation.GetRegisteredTriangleCount() ? 0 : 1;
+
+		//WCHAR msg[64];
+		//swprintf_s(msg, ARRAYSIZE(msg), L"max iterations: %d\ntriangleId: %d", iterations, triangleId);
+		//g_debugRender->AddText(0, 40, msg, COLOR_WHITE, COLOR_BLACK);
+	}
+	
+	_DrawTriangles(triangulation, wireColor, WithAlpha(COLOR_BLACK, .25f));
+	//_DrawTriangles(triangulation, wireColor);
+	//_DrawTriangleNeighbors(triangulation, triangleId, COLOR_GREEN, COLOR_YELLOW);
+}
+

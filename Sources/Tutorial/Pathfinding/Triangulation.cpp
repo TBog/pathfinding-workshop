@@ -7,7 +7,6 @@
 
 namespace Pathfinding
 {
-
 	Triangle::Triangle(int _id, int _p1, int _p2, int _p3, int _t1, int _t2, int _t3)
 	{
 		id = _id;
@@ -17,6 +16,17 @@ namespace Pathfinding
 		t1Id = _t1;
 		t2Id = _t2;
 		t3Id = _t3;
+	}
+
+	Triangle::Triangle(const Triangle& other)
+	{
+		id   = other.id;
+		p1Id = other.p1Id;
+		p2Id = other.p2Id;
+		p3Id = other.p3Id;
+		t1Id = other.t1Id;
+		t2Id = other.t2Id;
+		t3Id = other.t3Id;
 	}
 
 	int Triangle::GetTriangleId(int t) const
@@ -125,8 +135,10 @@ namespace Pathfinding
 
 	TriangleNeighbourInfo Triangulation::GetTriangleNeighbouringInfo(int t1Idx, int t2Idx) const
 	{
-		Triangle t1 = triangles[t1Idx];
-		Triangle t2 = triangles[t2Idx];
+		const Triangle& t1 = triangles[t1Idx];
+		const Triangle& t2 = triangles[t2Idx];
+		myAssert(t1.id == t1Idx, L"Triangle ID mismatch");
+		myAssert(t2.id == t2Idx, L"Triangle ID mismatch");
 
 		// find common points
 		int cp1 = -1, cp2 = -1;
@@ -252,7 +264,8 @@ namespace Pathfinding
 
 	void Triangulation::GetTriangleNeighbours(int tId, DynVec<TriangleNeighbourInfo>& neighbours) const
 	{
-		Triangle t = triangles[tId];
+		neighbours.Clear();
+		const Triangle& t = triangles[tId];
 		for (int i = 1; i <= 3; i++)
 		{
 			int n = t.GetTriangleId(i);
@@ -265,6 +278,7 @@ namespace Pathfinding
 
 	void Triangulation::GetTriangles(DynVec<Triangle>& ret) const
 	{
+		ret.Clear();
 		for (int i = 0; i < triangles.GetSize(); i++)
 		{
 			if (triangles[i].id == -1)
@@ -282,8 +296,8 @@ namespace Pathfinding
 			return;
 		}
 
-		Triangle t1 = triangles[t1Idx];
-		Triangle t2 = triangles[t2Idx];
+		Triangle& t1 = triangles[t1Idx];
+		Triangle& t2 = triangles[t2Idx];
 
 		int cp1 = -1, cp2 = -1;
 		int cp1IdxT1 = -1, cp1IdxT2 = -1, cp2IdxT1 = -1, cp2IdxT2 = -1;
@@ -366,7 +380,7 @@ namespace Pathfinding
 
 	void Triangulation::FlipTrianglesEdge(int t1Id, int t2Id)
 	{
-		TriangleNeighbourInfo info = GetTriangleNeighbouringInfo(t1Id, t2Id);
+		const TriangleNeighbourInfo& info = GetTriangleNeighbouringInfo(t1Id, t2Id);
 
 		triangles[t1Id].p1Id = info.p1Id;
 		triangles[t1Id].p2Id = info.p2Id;
