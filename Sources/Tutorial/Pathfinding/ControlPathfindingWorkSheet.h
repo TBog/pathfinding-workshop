@@ -149,7 +149,7 @@ namespace Pathfinding
 					continue;
 
 				TriangleId trId;
-				DynVec<Triangle> triangles(triangulation.GetRegisteredTriangleCount(), 32);
+				DynVec<Triangle> triangles(triangulation.GetTriangleCount(), 32);
 				triangulation.GetTriangles(triangles);
 				for (int j = 0; j < triangles.GetSize(); ++j)
 				{
@@ -210,10 +210,10 @@ namespace Pathfinding
 			DynVec<TriangleNeighbourInfo> neighbours(3, 3);
 
 			// Get initial triangle count for kill switch
-			DynVec<Triangle> triangles(triangulation.GetRegisteredTriangleCount(), 32);
+			DynVec<Triangle> triangles(triangulation.GetTriangleCount(), 32);
 			if (maxIterations == 0)
 			{
-				maxIterations = static_cast<size_t>(triangulation.GetRegisteredTriangleCount()) * 10;
+				maxIterations = static_cast<size_t>(triangulation.GetTriangleCount()) * 10;
 			}
 
 			while (swapped && iterations < maxIterations)
@@ -255,7 +255,7 @@ namespace Pathfinding
 
 		TriangleId GetConstraintStartTriangle(const Triangulation& triangulation, PointId p1Id, PointId p2Id)
 		{
-			DynVec<Triangle> triangles(triangulation.GetRegisteredTriangleCount(), 32);
+			DynVec<Triangle> triangles(triangulation.GetTriangleCount(), 32);
 			triangulation.GetTriangles(triangles);
 			for (int i = 0; i < triangles.GetSize(); i++)
 			{
@@ -285,7 +285,7 @@ namespace Pathfinding
 
 		bool TriangulationContainsEdge(const Triangulation& triangulation, PointId p1, PointId p2)
 		{
-			DynVec<Triangle> triangles(triangulation.GetRegisteredTriangleCount(), 32);
+			DynVec<Triangle> triangles(triangulation.GetTriangleCount(), 32);
 			triangulation.GetTriangles(triangles);
 			for (int i = 0; i < triangles.GetSize(); i++)
 			{

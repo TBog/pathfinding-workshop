@@ -395,7 +395,7 @@ void PathfindingWorkshopManager::_RunConvexHullExercise()
 void _DrawTriangles(Triangulation& triangulation, const Color& wireColor, const Color& triangleColor = COLOR_TRANSPARENT)
 {
 	DynVec<Vector2>& points = triangulation.points;
-	DynVec<Triangle> triangles(triangulation.GetRegisteredTriangleCount(), 32);
+	DynVec<Triangle> triangles(triangulation.GetTriangleCount(), 32);
 	triangulation.GetTriangles(triangles);
 	for (int i = 0; i < triangles.GetSize(); i += 1)
 	{
@@ -419,7 +419,7 @@ void _DrawTriangles(Triangulation& triangulation, const Color& wireColor, const 
 void _DrawTriangleNeighbors(Triangulation& triangulation, TriangleId triangleId, const Color& bgColor, const Color& fgColor)
 {
 	const DynVec<Vector2>& points = triangulation.GetPoints();
-	DynVec<Triangle> triangles(triangulation.GetRegisteredTriangleCount(), 32);
+	DynVec<Triangle> triangles(triangulation.GetTriangleCount(), 32);
 	triangulation.GetTriangles(triangles);
 	for (int i = 0; i < triangles.GetSize(); i += 1)
 	{
@@ -478,7 +478,7 @@ void PathfindingWorkshopManager::_RunRandomTriangulationExercise()
 	m_userWorkSheet->RandomTriangulation(points, triangulation);
 
 	Color wireColor = COLOR_YELLOW;
-	if (triangulation.GetRegisteredTriangleCount() == 0)
+	if (triangulation.GetTriangleCount() == 0)
 	{
 		wireColor = COLOR_WHITE;
 		m_controlWorkSheet->RandomTriangulation(points, triangulation);
@@ -514,7 +514,7 @@ void PathfindingWorkshopManager::_RunDelaunayTriangulationExercise()
 	m_userWorkSheet->RandomTriangulation(points, triangulation);
 	m_userWorkSheet->EdgeFlipping(triangulation);
 
-	if (triangulation.GetRegisteredTriangleCount() == 0)
+	if (triangulation.GetTriangleCount() == 0)
 	{
 		wireColor = COLOR_WHITE;
 		m_controlWorkSheet->RandomTriangulation(points, triangulation);
@@ -544,7 +544,7 @@ void PathfindingWorkshopManager::_RunDelaunayTriangulationExercise()
 		//if (leftJustPressed)
 		//	triangleId -= (triangleId - 1) < -1 ? 0 : 1;
 		//if (rightJustPressed)
-		//	triangleId += (triangleId + 1) > triangulation.GetRegisteredTriangleCount() ? 0 : 1;
+		//	triangleId += (triangleId + 1) > triangulation.GetTriangleCount() ? 0 : 1;
 
 		//WCHAR msg[64];
 		//swprintf_s(msg, ARRAYSIZE(msg), L"max iterations: %d\ntriangleId: %d", iterations, triangleId);
@@ -616,7 +616,7 @@ void PathfindingWorkshopManager::_RunConstrainedDelaunayExercise()
 	m_userWorkSheet->EdgeFlipping(triangulation);
 	m_userWorkSheet->AddTriangulationConstraints(triangulation, constraints);
 
-	if (triangulation.GetRegisteredTriangleCount() == 0)
+	if (triangulation.GetTriangleCount() == 0)
 	{
 		wireColor = COLOR_WHITE;
 		m_controlWorkSheet->RandomTriangulation(points, triangulation);
