@@ -12,8 +12,8 @@ namespace Pathfinding
 	{
 		struct IndexedPoint {
 			Vector2 point;
-			int idx;
-			IndexedPoint(const Vector2& p, int i) : point(p), idx(i) {}
+			PointId idx;
+			IndexedPoint(const Vector2& p, PointId i) : point(p), idx(i) {}
 			// Sort by x, then y
 			bool operator<(const IndexedPoint& other) const {
 				if (point.x != other.point.x)
@@ -76,7 +76,7 @@ namespace Pathfinding
 			}
 		}
 
-		void ConvexHull(const DynVec<Vector2>& points, DynVec<int>& outHull)
+		void ConvexHull(const DynVec<Vector2>& points, DynVec<PointId>& outHull)
 		{
 			const int n = points.GetSize();
 			if (n < 3) return;
@@ -84,7 +84,7 @@ namespace Pathfinding
 			std::vector<IndexedPoint> sortedPoints;
 			sortedPoints.reserve(n);
 			for (int i = 0; i < n; ++i)
-				sortedPoints.emplace_back(points[i], i);
+				sortedPoints.emplace_back(points[i], PointId(i));
 
 			std::sort(sortedPoints.begin(), sortedPoints.end());
 
@@ -124,7 +124,7 @@ namespace Pathfinding
 				triangulation.AddPoint(points[i]);
 
 			// Compute convex hull
-			DynVec<int> hull(points.GetSize(), 10);
+			DynVec<PointId> hull(points.GetSize(), 10);
 			ConvexHull(points, hull);
 
 			// Track used points
@@ -133,11 +133,11 @@ namespace Pathfinding
 				used[hull[i]] = true;
 
 			// Create initial triangles from hull
-			int prevIdx = -1;
+			TriangleId prevIdx;
 			for (int i = 2; i < hull.GetSize(); ++i)
 			{
-				int idx = triangulation.AddTriangle(hull[0], hull[i - 1], hull[i]);
-				if (prevIdx != -1)
+				TriangleId idx = triangulation.AddTriangle(hull[0], hull[i - 1], hull[i]);
+				if (prevIdx.IsValid())
 					triangulation.LinkTriangles(idx, prevIdx);
 				prevIdx = idx;
 			}
@@ -148,7 +148,7 @@ namespace Pathfinding
 				if (used[i])
 					continue;
 
-				int trId = -1;
+				TriangleId trId;
 				DynVec<Triangle> triangles(triangulation.GetRegisteredTriangleCount(), 32);
 				triangulation.GetTriangles(triangles);
 				for (int j = 0; j < triangles.GetSize(); ++j)
@@ -166,7 +166,7 @@ namespace Pathfinding
 					}
 				}
 
-				if (trId == -1)
+				if (!trId.IsValid())
 				{
 					WCHAR msg[512];
 					swprintf_s(msg, ARRAYSIZE(msg), L"[ControlPathfindingWorkSheet::RandomTriangulation] Didn't find Triangle. Point: %d", i);
@@ -175,19 +175,19 @@ namespace Pathfinding
 				}
 
 				const Triangle& tri = triangulation.GetTriangle(trId);
-				int p1Id = tri.p1Id;
-				int p2Id = tri.p2Id;
-				int p3Id = tri.p3Id;
+				PointId p1Id = tri.p1Id;
+				PointId p2Id = tri.p2Id;
+				PointId p3Id = tri.p3Id;
 
-				int t1Id = tri.t1Id;
-				int t2Id = tri.t2Id;
-				int t3Id = tri.t3Id;
+				TriangleId t1Id = tri.t1Id;
+				TriangleId t2Id = tri.t2Id;
+				TriangleId t3Id = tri.t3Id;
 
 				triangulation.RemoveTriangle(trId);
 
-				int t5 = triangulation.AddTriangle(p1Id, p2Id, i);
-				int t6 = triangulation.AddTriangle(p2Id, p3Id, i);
-				int t7 = triangulation.AddTriangle(p3Id, p1Id, i);
+				TriangleId t5 = triangulation.AddTriangle(p1Id, p2Id, PointId(i));
+				TriangleId t6 = triangulation.AddTriangle(p2Id, p3Id, PointId(i));
+				TriangleId t7 = triangulation.AddTriangle(p3Id, p1Id, PointId(i));
 
 				triangulation.LinkTriangles(t5, t1Id);
 				triangulation.LinkTriangles(t5, t6);
@@ -253,7 +253,7 @@ namespace Pathfinding
 			}
 		}
 
-		int GetConstraintStartTriangle(const Triangulation& triangulation, int p1Id, int p2Id)
+		TriangleId GetConstraintStartTriangle(const Triangulation& triangulation, PointId p1Id, PointId p2Id)
 		{
 			DynVec<Triangle> triangles(triangulation.GetRegisteredTriangleCount(), 32);
 			triangulation.GetTriangles(triangles);
@@ -264,7 +264,7 @@ namespace Pathfinding
 				{
 					continue;
 				}
-				int tp2Id = 0, tp3Id = 0;
+				PointId tp2Id, tp3Id;
 				triangles[i].GetOtherPoints(p1Id, tp2Id, tp3Id);
 
 				Vector2 p1V, p2V, p3V, finalPoint;
@@ -276,14 +276,14 @@ namespace Pathfinding
 				float sign = SignedArea(p1V, p2V, p3V);
 				if (SignedArea(p1V, p2V, finalPoint) * sign > 0 && SignedArea(p1V, finalPoint, p3V) * sign > 0)
 				{
-					return i;
+					return triangles[i].id;
 				}
 			}
 
-			return -1;
+			return TriangleId(-1);
 		}
 
-		bool TriangulationContainsEdge(const Triangulation& triangulation, int p1, int p2)
+		bool TriangulationContainsEdge(const Triangulation& triangulation, PointId p1, PointId p2)
 		{
 			DynVec<Triangle> triangles(triangulation.GetRegisteredTriangleCount(), 32);
 			triangulation.GetTriangles(triangles);
@@ -313,8 +313,8 @@ namespace Pathfinding
 
 		void AddTriangulationConstraint(Triangulation& triangulation, const TriangulationConstraint& constraint)
 		{
-			int p1Id = constraint.p1;
-			int p2Id = constraint.p2;
+			PointId p1Id = constraint.p1;
+			PointId p2Id = constraint.p2;
 
 			int iterations = 0;
 
@@ -327,12 +327,12 @@ namespace Pathfinding
 					return;
 
 				// Find the triangle to start from
-				int triangleId = GetConstraintStartTriangle(triangulation, p1Id, p2Id);
-				if (triangleId == -1)
+				TriangleId triangleId = GetConstraintStartTriangle(triangulation, p1Id, p2Id);
+				if (!triangleId.IsValid())
 					return;
 
 				// Get the two other points of the triangle (not p1Id)
-				int eP1 = -1, eP2 = -1;
+				PointId eP1, eP2;
 				triangulation.GetTriangle(triangleId).GetOtherPoints(p1Id, eP1, eP2);
 
 				Vector2 eP1V = triangulation.GetPoint(eP1);

@@ -21,7 +21,7 @@ namespace Pathfinding
 		return (s1 <= 0 && s2 <= 0 && s3 <= 0) || (s1 >= 0 && s2 >= 0 && s3 >= 0);
 	}
 
-	Triangle::Triangle(int _id, int _p1, int _p2, int _p3, int _t1, int _t2, int _t3)
+	Triangle::Triangle(TriangleId _id, PointId _p1, PointId _p2, PointId _p3, TriangleId _t1, TriangleId _t2, TriangleId _t3)
 	{
 		id = _id;
 		p1Id = _p1;
@@ -43,7 +43,7 @@ namespace Pathfinding
 		t3Id = other.t3Id;
 	}
 
-	int Triangle::GetTriangleId(int t) const
+	TriangleId Triangle::GetTriangleId(int t) const
 	{
 		if (t == 1)
 		{
@@ -58,10 +58,10 @@ namespace Pathfinding
 			return t3Id;
 		}
 
-		return -1;
+		return TriangleId(-1);
 	}
 
-	int Triangle::GetPointId(int p) const
+	PointId Triangle::GetPointId(int p) const
 	{
 		if (p == 1)
 		{
@@ -76,10 +76,10 @@ namespace Pathfinding
 			return p3Id;
 		}
 
-		return -1;
+		return PointId(-1);
 	}
 
-	void Triangle::GetOtherPoints(int p1Id, int& p1, int& p2) const
+	void Triangle::GetOtherPoints(PointId p1Id, PointId& p1, PointId& p2) const
 	{
 		int idx = FindVertex(p1Id);
 		idx = idx == 3 ? 1 : idx + 1;
@@ -88,7 +88,7 @@ namespace Pathfinding
 		p2 = GetPointId(idx);
 	}
 
-	int Triangle::GetNeighbourTriangle(int p1Idx, int p2Idx) const
+	TriangleId Triangle::GetNeighbourTriangle(int p1Idx, int p2Idx) const
 	{
 		if (p1Idx > p2Idx)
 		{
@@ -109,7 +109,7 @@ namespace Pathfinding
 		}
 	}
 
-	void Triangle::SetNeighbourTriangle(int p1Idx, int p2Idx, int trIdx)
+	void Triangle::SetNeighbourTriangle(int p1Idx, int p2Idx, TriangleId trIdx)
 	{
 		if (p1Idx > p2Idx)
 		{
@@ -130,7 +130,7 @@ namespace Pathfinding
 		}
 	}
 
-	int Triangle::FindVertex(int pointId) const
+	int Triangle::FindVertex(PointId pointId) const
 	{
 		if (p1Id == pointId)
 		{
@@ -147,7 +147,7 @@ namespace Pathfinding
 		return 0;
 	}
 
-	TriangleNeighbourInfo Triangulation::GetTriangleNeighbouringInfo(int t1Idx, int t2Idx) const
+	TriangleNeighbourInfo Triangulation::GetTriangleNeighbouringInfo(TriangleId t1Idx, TriangleId t2Idx) const
 	{
 		const Triangle& t1 = triangles[t1Idx];
 		const Triangle& t2 = triangles[t2Idx];
@@ -155,7 +155,7 @@ namespace Pathfinding
 		myAssert(t2.id == t2Idx, L"Triangle ID mismatch");
 
 		// find common points
-		int cp1 = -1, cp2 = -1;
+		PointId cp1, cp2;
 		int cp1IdxT1 = -1, cp1IdxT2 = -1, cp2IdxT1 = -1, cp2IdxT2 = -1;
 		for (int i = 1; i <= 3; i++)
 		{
@@ -163,7 +163,7 @@ namespace Pathfinding
 			{
 				if (t1.GetPointId(i) == t2.GetPointId(j))
 				{
-					if (cp1 == -1)
+					if (!cp1.IsValid())
 					{
 						cp1 = t1.GetPointId(i);
 						cp1IdxT1 = i;
@@ -180,16 +180,16 @@ namespace Pathfinding
 			}
 		}
 
-		if (cp1 == -1 || cp2 == -1)
+		if (!cp1.IsValid() || !cp2.IsValid())
 		{
 			WCHAR msg[512];
-			swprintf_s(msg, ARRAYSIZE(msg), L"[Triangulation::GetTriangleNeighbouringInfo] Triangles are not neighbours (%d, %d)", t1Idx, t2Idx);
+			swprintf_s(msg, ARRAYSIZE(msg), L"[Triangulation::GetTriangleNeighbouringInfo] Triangles are not neighbours (%d, %d)", t1Idx.value, t2Idx.value);
 			ShowErrorMessageBox(msg);
 			return TriangleNeighbourInfo();
 		}
 
 		// find outer-points
-		int t1op = -1, t2op = -1;
+		PointId t1op, t2op;
 		int t1opIdx = -1, t2opIdx = -1;
 		for (int i = 1; i <= 3; i++)
 		{
@@ -222,44 +222,44 @@ namespace Pathfinding
 		return neighbouringInfo;
 	}
 
-	void Triangulation::AddTriangleEdge(int t1Idx, int t2Idx, int t1Hint)
+	void Triangulation::AddTriangleEdge(TriangleId t1Idx, TriangleId t2Idx, int t1Hint)
 	{
 		if (t2Idx == -1)
 		{
 			int t1hint2 = t1Hint == 3 ? 1 : t1Hint + 1;
-			triangles[t1Idx].SetNeighbourTriangle(t1Hint, t1hint2, -1);
+			triangles[t1Idx].SetNeighbourTriangle(t1Hint, t1hint2, TriangleId(-1));
 			return;
 		}
 
 		LinkTriangles(t1Idx, t2Idx);
 	}
 
-	int Triangulation::AddTriangle(int p1Id, int p2Id, int p3Id)
+	TriangleId Triangulation::AddTriangle(PointId p1Id, PointId p2Id, PointId p3Id)
 	{
 		if (p1Id < 0 || p1Id >= points.GetSize())
 		{
 			WCHAR msg[512];
-			swprintf_s(msg, ARRAYSIZE(msg), L"[Triangulation::AddTriangle] Invalid Point id: %d. Triangulation contains %d", p1Id, points.GetSize());
+			swprintf_s(msg, ARRAYSIZE(msg), L"[Triangulation::AddTriangle] Invalid Point id: %d. Triangulation contains %d", p1Id.value, points.GetSize());
 			ShowErrorMessageBox(msg);
 		}
 
 		if (p2Id < 0 || p2Id >= points.GetSize())
 		{
 			WCHAR msg[512];
-			swprintf_s(msg, ARRAYSIZE(msg), L"[Triangulation::AddTriangle] Invalid Point id: %d. Triangulation contains %d", p2Id, points.GetSize());
+			swprintf_s(msg, ARRAYSIZE(msg), L"[Triangulation::AddTriangle] Invalid Point id: %d. Triangulation contains %d", p2Id.value, points.GetSize());
 			ShowErrorMessageBox(msg);
 		}
 
 		if (p3Id < 0 || p3Id >= points.GetSize())
 		{
 			WCHAR msg[512];
-			swprintf_s(msg, ARRAYSIZE(msg), L"[Triangulation::AddTriangle] Invalid Point id: %d. Triangulation contains %d", p3Id, points.GetSize());
+			swprintf_s(msg, ARRAYSIZE(msg), L"[Triangulation::AddTriangle] Invalid Point id: %d. Triangulation contains %d", p3Id.value, points.GetSize());
 			ShowErrorMessageBox(msg);
 		}
 
-		Triangle t(-1, p1Id, p2Id, p3Id, -1, -1, -1);
+		Triangle t(TriangleId(-1), p1Id, p2Id, p3Id, TriangleId(-1), TriangleId(-1), TriangleId(-1));
 
-		int tId;
+		TriangleId tId;
 		if (emptyTriangles.GetSize() > 0)
 		{
 			tId = emptyTriangles[emptyTriangles.GetSize() - 1];
@@ -269,20 +269,20 @@ namespace Pathfinding
 		else
 		{
 			triangles.Add(t);
-			tId = triangles.GetSize() - 1;
+			tId = TriangleId(triangles.GetSize() - 1);
 		}
 
 		triangles[tId].id = tId;
 		return tId;
 	}
 
-	void Triangulation::GetTriangleNeighbours(int tId, DynVec<TriangleNeighbourInfo>& neighbours) const
+	void Triangulation::GetTriangleNeighbours(TriangleId tId, DynVec<TriangleNeighbourInfo>& neighbours) const
 	{
 		neighbours.Clear();
 		const Triangle& t = triangles[tId];
 		for (int i = 1; i <= 3; i++)
 		{
-			int n = t.GetTriangleId(i);
+			TriangleId n = t.GetTriangleId(i);
 			if (n != -1)
 			{
 				neighbours.Add(GetTriangleNeighbouringInfo(tId, n));
@@ -303,7 +303,7 @@ namespace Pathfinding
 		}
 	}
 
-	void Triangulation::LinkTriangles(int t1Idx, int t2Idx)
+	void Triangulation::LinkTriangles(TriangleId t1Idx, TriangleId t2Idx)
 	{
 		if (t1Idx == -1 || t2Idx == -1)
 		{
@@ -313,7 +313,7 @@ namespace Pathfinding
 		Triangle& t1 = triangles[t1Idx];
 		Triangle& t2 = triangles[t2Idx];
 
-		int cp1 = -1, cp2 = -1;
+		PointId cp1, cp2;
 		int cp1IdxT1 = -1, cp1IdxT2 = -1, cp2IdxT1 = -1, cp2IdxT2 = -1;
 		for (int i = 1; i <= 3; i++)
 		{
@@ -321,7 +321,7 @@ namespace Pathfinding
 			{
 				if (t1.GetPointId(i) == t2.GetPointId(j))
 				{
-					if (cp1 == -1)
+					if (!cp1.IsValid())
 					{
 						cp1 = t1.GetPointId(i);
 						cp1IdxT1 = i;
@@ -338,7 +338,7 @@ namespace Pathfinding
 			}
 		}
 
-		if (cp1 == -1 || cp2 == -1)
+		if (!cp1.IsValid() || !cp2.IsValid())
 		{
 			ShowErrorMessageBox(L"[Triangulation::LinkTriangles] Triangles are not neighbours");
 			return;
@@ -348,7 +348,7 @@ namespace Pathfinding
 		t2.SetNeighbourTriangle(cp1IdxT2, cp2IdxT2, t1Idx);
 	}
 
-	int Triangulation::BreakTriangles(int triangleId, int triangle2Id, Vector2 splitPoint)
+	PointId Triangulation::BreakTriangles(TriangleId triangleId, TriangleId triangle2Id, Vector2 splitPoint)
 	{
 		// TODO: assert triangles are neighbours
 		TriangleNeighbourInfo neighbourInfo = GetTriangleNeighbouringInfo(triangleId, triangle2Id);
@@ -356,18 +356,18 @@ namespace Pathfinding
 		RemoveTriangle(triangleId);
 		RemoveTriangle(neighbourInfo.neighbourId);
 
-		int splitPointId = AddPoint(splitPoint);
+		PointId splitPointId = AddPoint(splitPoint);
 
-		int t1Id = neighbourInfo.t1Id;
-		int t2Id = neighbourInfo.t2Id;
-		int t3Id = neighbourInfo.t3Id;
-		int t4Id = neighbourInfo.t4Id;
+		TriangleId t1Id = neighbourInfo.t1Id;
+		TriangleId t2Id = neighbourInfo.t2Id;
+		TriangleId t3Id = neighbourInfo.t3Id;
+		TriangleId t4Id = neighbourInfo.t4Id;
 
 		// Create the new triangles
-		int t5Id = AddTriangle(neighbourInfo.p1Id, neighbourInfo.p2Id, splitPointId);
-		int t6Id = AddTriangle(neighbourInfo.p1Id, neighbourInfo.p3Id, splitPointId);
-		int t7Id = AddTriangle(neighbourInfo.p2Id, neighbourInfo.p4Id, splitPointId);
-		int t8Id = AddTriangle(neighbourInfo.p3Id, neighbourInfo.p4Id, splitPointId);
+		TriangleId t5Id = AddTriangle(neighbourInfo.p1Id, neighbourInfo.p2Id, splitPointId);
+		TriangleId t6Id = AddTriangle(neighbourInfo.p1Id, neighbourInfo.p3Id, splitPointId);
+		TriangleId t7Id = AddTriangle(neighbourInfo.p2Id, neighbourInfo.p4Id, splitPointId);
+		TriangleId t8Id = AddTriangle(neighbourInfo.p3Id, neighbourInfo.p4Id, splitPointId);
 
 		// Add the edges between triangles
 		// t5
@@ -392,7 +392,7 @@ namespace Pathfinding
 		return splitPointId;
 	}
 
-	bool Triangulation::FlipTrianglesEdge(int t1Id, int t2Id)
+	bool Triangulation::FlipTrianglesEdge(TriangleId t1Id, TriangleId t2Id)
 	{
 		const TriangleNeighbourInfo& info = GetTriangleNeighbouringInfo(t1Id, t2Id);
 
@@ -435,9 +435,9 @@ namespace Pathfinding
 			if (triangles[i].isBlocked)
 				continue;
 
-			int p1 = triangles[i].p1Id;
-			int p2 = triangles[i].p2Id;
-			int p3 = triangles[i].p3Id;
+			PointId p1 = triangles[i].p1Id;
+			PointId p2 = triangles[i].p2Id;
+			PointId p3 = triangles[i].p3Id;
 
 			pointNeighbours[p1].push_back(p2);
 			pointNeighbours[p1].push_back(p3);
@@ -457,7 +457,7 @@ namespace Pathfinding
 		}
 	} 
 
-	int Triangulation::FindTriangle(Vector2 point) const
+	TriangleId Triangulation::FindTriangle(Vector2 point) const
 	{
 		for (int i = 0; i < triangles.GetSize(); i += 1)
 		{
@@ -472,7 +472,7 @@ namespace Pathfinding
 			}
 		}
 
-		return -1;
+		return TriangleId(-1);
 	}
 
 	bool Triangulation::CheckLineOfSight(Vector2 p1, Vector2 p2) const
@@ -483,10 +483,10 @@ namespace Pathfinding
 		p1 = p1 + GetNormalized(p2 - p1) * 0.01f;
 		p2 = p2 + GetNormalized(p1 - p2) * 0.01f;
 
-		int tri1Id = FindTriangle(p1);
-		int tri2Id = FindTriangle(p2);
+		TriangleId tri1Id = FindTriangle(p1);
+		TriangleId tri2Id = FindTriangle(p2);
 
-		int prevTriangle = -1;
+		TriangleId prevTriangle;
 
 		while (tri1Id != tri2Id)
 		{
