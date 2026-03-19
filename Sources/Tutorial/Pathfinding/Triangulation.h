@@ -86,25 +86,13 @@ namespace Pathfinding
 		}
 	};
 
-	struct Triangulation
+	class Triangulation
 	{
 		DynVec<Vector2> points;
-	protected:
 		DynVec<Triangle> triangles;
-	public:
 		std::vector<std::vector<PointId>> pointNeighbours;
 		DynVec<TriangleId> emptyTriangles;
 		
-		Triangulation()
-			: points(32, 64)
-			, triangles(8, 16)
-			, pointNeighbours()
-			, emptyTriangles(1, 4)
-			, LOSTrianglePath(1, 8)
-		{
-		}
-
-	protected:
 		// Deep copy constructor
 		Triangulation(const Triangulation& other)
 			: points(other.points.GetSize(), 64)
@@ -122,7 +110,6 @@ namespace Pathfinding
 			for (int i = 0; i < other.LOSTrianglePath.GetSize(); ++i)
 				LOSTrianglePath.Add(other.LOSTrianglePath[i]);
 		}
-	public:
 
 		// Deep copy assignment operator
 		Triangulation& operator=(const Triangulation& other)
@@ -154,6 +141,15 @@ namespace Pathfinding
 			return *this;
 		}
 
+	public:
+		Triangulation()
+			: points(32, 64)
+			, triangles(8, 16)
+			, pointNeighbours()
+			, emptyTriangles(1, 4)
+			, LOSTrianglePath(1, 8)
+		{}
+
 		TriangleNeighbourInfo GetTriangleNeighbouringInfo(TriangleId t1Idx, TriangleId t2Idx) const;
 
 		void AddTriangleEdge(TriangleId t1Idx, TriangleId t2Idx, int t1Hint);
@@ -178,7 +174,7 @@ namespace Pathfinding
 
 		void RemoveTriangle(TriangleId tId)
 		{
-			triangles[tId].id = TriangleId(-1);
+			triangles[tId].id = TriangleId(); // invalid id
 			emptyTriangles.Add(tId);
 		}
 
@@ -192,9 +188,9 @@ namespace Pathfinding
 			return triangles[triangleId];
 		}
 
-		int GetRegisteredTriangleCount() const
+		int GetTriangleCount() const
 		{
-			return triangles.GetSize();
+			return triangles.GetSize() - emptyTriangles.GetSize();
 		}
 
 		void GetTriangleNeighbours(TriangleId tId, DynVec<TriangleNeighbourInfo>& outNeighbours) const;
@@ -205,9 +201,9 @@ namespace Pathfinding
 
 		Vector2 GetTriangleCenter(TriangleId tId) const
 		{
-			Vector2 p1 = points[GetTriangle(tId).p1Id];
-			Vector2 p2 = points[GetTriangle(tId).p2Id];
-			Vector2 p3 = points[GetTriangle(tId).p3Id];
+			const Vector2& p1 = points[GetTriangle(tId).p1Id];
+			const Vector2& p2 = points[GetTriangle(tId).p2Id];
+			const Vector2& p3 = points[GetTriangle(tId).p3Id];
 
 			return (p1 + p2 + p3) / 3.f;
 		}
