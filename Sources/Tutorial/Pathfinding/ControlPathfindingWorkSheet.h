@@ -174,13 +174,14 @@ namespace Pathfinding
 					continue;
 				}
 
-				int p1Id = triangles[trId].p1Id;
-				int p2Id = triangles[trId].p2Id;
-				int p3Id = triangles[trId].p3Id;
+				const Triangle& tri = triangulation.GetTriangle(trId);
+				int p1Id = tri.p1Id;
+				int p2Id = tri.p2Id;
+				int p3Id = tri.p3Id;
 
-				int t1Id = triangles[trId].t1Id;
-				int t2Id = triangles[trId].t2Id;
-				int t3Id = triangles[trId].t3Id;
+				int t1Id = tri.t1Id;
+				int t2Id = tri.t2Id;
+				int t3Id = tri.t3Id;
 
 				triangulation.RemoveTriangle(trId);
 
@@ -242,8 +243,10 @@ namespace Pathfinding
 
 						if (InsideCircumcircle(p1, p2, p3, p4))
 						{
-							triangulation.FlipTrianglesEdge(t1.id, t2.id);
-							swapped = true;
+							if (triangulation.FlipTrianglesEdge(t1.id, t2.id))
+							{
+								swapped = true;
+							}
 						}
 					}
 				}

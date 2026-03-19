@@ -201,7 +201,7 @@ namespace Pathfinding
 		void GetTriangles(DynVec<Triangle>& outTriangles) const;
 		void LinkTriangles(int t1Idx, int t2Idx);
 		int BreakTriangles(int triangleId, int triangle2Id, Vector2 splitPoint);
-		void FlipTrianglesEdge(int t1Id, int t2Id);
+		bool FlipTrianglesEdge(int t1Id, int t2Id);
 
 		Vector2 GetTriangleCenter(int tId) const
 		{

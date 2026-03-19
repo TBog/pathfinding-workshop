@@ -7,6 +7,20 @@
 
 namespace Pathfinding
 {
+	static float SignedArea(const Vector2& p1, const Vector2& p2, const Vector2& p3)
+	{
+		return p1.x * p2.y + p2.x * p3.y + p3.x * p1.y - p1.x * p3.y - p3.x * p2.y - p2.x * p1.y;
+	}
+
+	static bool InsideTriangle(const Vector2& p1, const Vector2& p2, const Vector2& p3, const Vector2& p4)
+	{
+		const float s1 = SignedArea(p1, p2, p4);
+		const float s2 = SignedArea(p2, p3, p4);
+		const float s3 = SignedArea(p3, p1, p4);
+
+		return (s1 <= 0 && s2 <= 0 && s3 <= 0) || (s1 >= 0 && s2 >= 0 && s3 >= 0);
+	}
+
 	Triangle::Triangle(int _id, int _p1, int _p2, int _p3, int _t1, int _t2, int _t3)
 	{
 		id = _id;
@@ -378,9 +392,16 @@ namespace Pathfinding
 		return splitPointId;
 	}
 
-	void Triangulation::FlipTrianglesEdge(int t1Id, int t2Id)
+	bool Triangulation::FlipTrianglesEdge(int t1Id, int t2Id)
 	{
 		const TriangleNeighbourInfo& info = GetTriangleNeighbouringInfo(t1Id, t2Id);
+
+		// Only flip if the quadrilateral formed by the two triangles is convex.
+		// p2 (cp1) and p3 (cp2) must be on opposite sides of the line p1-p4 (t1op-t2op).
+		const float sa = SignedArea(points[info.p1Id], points[info.p4Id], points[info.p2Id]);
+		const float sb = SignedArea(points[info.p1Id], points[info.p4Id], points[info.p3Id]);
+		if (sa * sb >= 0.f)
+			return false;
 
 		triangles[t1Id].p1Id = info.p1Id;
 		triangles[t1Id].p2Id = info.p2Id;
@@ -398,6 +419,8 @@ namespace Pathfinding
 		AddTriangleEdge(t2Id, info.t2Id, 1);
 		AddTriangleEdge(t2Id, info.t4Id, 2);
 		AddTriangleEdge(t2Id, t1Id, 3);
+
+		return true;
 	}
 
 	void Triangulation::BuildPointConnectivity()
@@ -433,20 +456,6 @@ namespace Pathfinding
 			neighbors.erase(std::unique(neighbors.begin(), neighbors.end()), neighbors.end());
 		}
 	} 
-
-	static float SignedArea(const Vector2& p1, const Vector2& p2, const Vector2& p3)
-	{
-		return p1.x * p2.y + p2.x * p3.y + p3.x * p1.y - p1.x * p3.y - p3.x * p2.y - p2.x * p1.y;
-	}
-	
-	static bool InsideTriangle(const Vector2& p1, const Vector2& p2, const Vector2& p3, const Vector2& p4)
-	{
-		const float s1 = SignedArea(p1, p2, p4);
-		const float s2 = SignedArea(p2, p3, p4);
-		const float s3 = SignedArea(p3, p1, p4);
-
-		return (s1 <= 0 && s2 <= 0 && s3 <= 0) || (s1 >= 0 && s2 >= 0 && s3 >= 0);
-	}
 
 	int Triangulation::FindTriangle(Vector2 point) const
 	{
