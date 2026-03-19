@@ -9,102 +9,90 @@ namespace Pathfinding
 {
 	struct Triangle
 	{
-		int id;
+		TriangleId id;
 
-		int p1Id;
-		int p2Id;
-		int p3Id;
+		PointId p1Id;
+		PointId p2Id;
+		PointId p3Id;
 
-		int t1Id; // p1-p2
-		int t2Id; // p2-p3
-		int t3Id; // p3-p1
+		TriangleId t1Id; // p1-p2
+		TriangleId t2Id; // p2-p3
+		TriangleId t3Id; // p3-p1
 
 		bool isBlocked = false;
 
-		Triangle(int _id, int _p1, int _p2, int _p3, int _t1, int _t2, int _t3);
+		Triangle(TriangleId _id, PointId _p1, PointId _p2, PointId _p3, TriangleId _t1, TriangleId _t2, TriangleId _t3);
 	protected:
 		// Deep copy constructor
 		Triangle(const Triangle& other);
 	public:
 
-		int GetTriangleId(int t) const;
+		TriangleId GetTriangleId(int t) const;
 
-		int GetPointId(int p) const;
+		PointId GetPointId(int p) const;
 
-		void GetOtherPoints(int p1Id, int& p1, int& p2) const;
+		void GetOtherPoints(PointId p1Id, PointId& p1, PointId& p2) const;
 
-		int GetEdgeNeighbourTriangle(int p1Id, int p2Id) const
+		TriangleId GetEdgeNeighbourTriangle(PointId p1Id, PointId p2Id) const
 		{
 			return GetNeighbourTriangle(FindVertex(p1Id), FindVertex(p2Id));
 		}
 
-		int GetNeighbourTriangle(int p1Idx, int p2Idx) const;
+		TriangleId GetNeighbourTriangle(int p1Idx, int p2Idx) const;
 
-		void SetNeighbourTriangle(int p1Idx, int p2Idx, int trIdx);
+		void SetNeighbourTriangle(int p1Idx, int p2Idx, TriangleId trIdx);
 
-		bool IsVertex(int pointId) const
+		bool IsVertex(PointId pointId) const
 		{
 			return FindVertex(pointId) != 0;
 		}
 
-		int FindVertex(int pointId) const; // Rename Find Vertex
+		int FindVertex(PointId pointId) const;
 	};
 
 	struct TriangleNeighbourInfo
 	{
-		int neighbourId;
+		TriangleId neighbourId;
 
 		// p2-p3 common edge
-		int p1Id;
-		int p2Id;
-		int p3Id;
-		int p4Id;
+		PointId p1Id;
+		PointId p2Id;
+		PointId p3Id;
+		PointId p4Id;
 
-		int t1Id; // p1-p2
-		int t2Id; // p1-p3
-		int t3Id; // p4-p2
-		int t4Id; // p4-p3
+		TriangleId t1Id; // p1-p2
+		TriangleId t2Id; // p1-p3
+		TriangleId t3Id; // p4-p2
+		TriangleId t4Id; // p4-p3
 
-		int GetNeighbourId() const
+		TriangleId GetNeighbourId() const
 		{
 			return neighbourId;
 		}
 
-		int GetCommonPoint1Id() const
+		PointId GetCommonPoint1Id() const
 		{
 			return p2Id;
 		}
 
-		int GetCommonPoint2Id() const
+		PointId GetCommonPoint2Id() const
 		{
 			return p3Id;
 		}
 
-		int GetNeighbourOuterPointId() const
+		PointId GetNeighbourOuterPointId() const
 		{
 			return p4Id;
 		}
 	};
 
-	struct Triangulation
+	class Triangulation
 	{
 		DynVec<Vector2> points;
-	protected:
 		DynVec<Triangle> triangles;
-	public:
-		std::vector<std::vector<int>> pointNeighbours;
-		DynVec<int> emptyTriangles;
+		std::vector<std::vector<PointId>> pointNeighbours;
+		DynVec<TriangleId> emptyTriangles;
 		
-		Triangulation()
-			: points(32, 64)
-			, triangles(8, 16)
-			, pointNeighbours()
-			, emptyTriangles(1, 4)
-			, LOSTrianglePath(1, 8)
-		{
-		}
-
-	protected:
 		// Deep copy constructor
 		Triangulation(const Triangulation& other)
 			: points(other.points.GetSize(), 64)
@@ -122,7 +110,6 @@ namespace Pathfinding
 			for (int i = 0; i < other.LOSTrianglePath.GetSize(); ++i)
 				LOSTrianglePath.Add(other.LOSTrianglePath[i]);
 		}
-	public:
 
 		// Deep copy assignment operator
 		Triangulation& operator=(const Triangulation& other)
@@ -154,14 +141,23 @@ namespace Pathfinding
 			return *this;
 		}
 
-		TriangleNeighbourInfo GetTriangleNeighbouringInfo(int t1Idx, int t2Idx) const;
+	public:
+		Triangulation()
+			: points(32, 64)
+			, triangles(8, 16)
+			, pointNeighbours()
+			, emptyTriangles(1, 4)
+			, LOSTrianglePath(1, 8)
+		{}
 
-		void AddTriangleEdge(int t1Idx, int t2Idx, int t1Hint);
+		TriangleNeighbourInfo GetTriangleNeighbouringInfo(TriangleId t1Idx, TriangleId t2Idx) const;
 
-		int AddPoint(const Vector2& p)
+		void AddTriangleEdge(TriangleId t1Idx, TriangleId t2Idx, int t1Hint);
+
+		PointId AddPoint(const Vector2& p)
 		{
 			points.Add(p);
-			return points.GetSize() - 1;
+			return PointId(points.GetSize() - 1);
 		}
 
 		const DynVec<Vector2>& GetPoints() const
@@ -169,53 +165,53 @@ namespace Pathfinding
 			return points;
 		}
 
-		const Vector2& GetPoint(int pointId) const
+		const Vector2& GetPoint(PointId pointId) const
 		{
 			return points[pointId];
 		}
 
-		int AddTriangle(int p1Id, int p2Id, int p3Id);
+		TriangleId AddTriangle(PointId p1Id, PointId p2Id, PointId p3Id);
 
-		void RemoveTriangle(int tId)
+		void RemoveTriangle(TriangleId tId)
 		{
-			triangles[tId].id = -1;
+			triangles[tId].id = TriangleId(); // invalid id
 			emptyTriangles.Add(tId);
 		}
 
-		Triangle& GetTriangle(int triangleId)
+		Triangle& GetTriangle(TriangleId triangleId)
 		{
 			return triangles[triangleId];
 		}
 
-		const Triangle& GetTriangle(int triangleId) const
+		const Triangle& GetTriangle(TriangleId triangleId) const
 		{
 			return triangles[triangleId];
 		}
 
-		int GetRegisteredTriangleCount() const
+		int GetTriangleCount() const
 		{
-			return triangles.GetSize();
+			return triangles.GetSize() - emptyTriangles.GetSize();
 		}
 
-		void GetTriangleNeighbours(int tId, DynVec<TriangleNeighbourInfo>& outNeighbours) const;
+		void GetTriangleNeighbours(TriangleId tId, DynVec<TriangleNeighbourInfo>& outNeighbours) const;
 		void GetTriangles(DynVec<Triangle>& outTriangles) const;
-		void LinkTriangles(int t1Idx, int t2Idx);
-		int BreakTriangles(int triangleId, int triangle2Id, Vector2 splitPoint);
-		bool FlipTrianglesEdge(int t1Id, int t2Id);
+		void LinkTriangles(TriangleId t1Idx, TriangleId t2Idx);
+		PointId BreakTriangles(TriangleId triangleId, TriangleId triangle2Id, Vector2 splitPoint);
+		bool FlipTrianglesEdge(TriangleId t1Id, TriangleId t2Id);
 
-		Vector2 GetTriangleCenter(int tId) const
+		Vector2 GetTriangleCenter(TriangleId tId) const
 		{
-			Vector2 p1 = points[GetTriangle(tId).p1Id];
-			Vector2 p2 = points[GetTriangle(tId).p2Id];
-			Vector2 p3 = points[GetTriangle(tId).p3Id];
+			const Vector2& p1 = points[GetTriangle(tId).p1Id];
+			const Vector2& p2 = points[GetTriangle(tId).p2Id];
+			const Vector2& p3 = points[GetTriangle(tId).p3Id];
 
 			return (p1 + p2 + p3) / 3.f;
 		}
 
 		void BuildPointConnectivity();
-		int FindTriangle(Vector2 point) const;
+		TriangleId FindTriangle(Vector2 point) const;
 
-		mutable DynVec<int> LOSTrianglePath;
+		mutable DynVec<TriangleId> LOSTrianglePath;
 		bool CheckLineOfSight(Vector2 p1, Vector2 p2) const;
 	};
 }

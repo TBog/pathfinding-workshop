@@ -12,6 +12,40 @@ namespace Pathfinding
 	typedef D3DXMATRIX Mat4x4;
 	typedef D3DXCOLOR Color;
 
+	struct PointId
+	{
+		int value;
+
+		PointId() : value(-1) {}
+		explicit PointId(int v) : value(v) {}
+
+		bool IsValid() const { return value >= 0; }
+
+		bool operator==(PointId other) const { return value == other.value; }
+		bool operator!=(PointId other) const { return value != other.value; }
+		bool operator<(PointId other) const { return value < other.value; }
+		bool operator>(PointId other) const { return value > other.value; }
+
+		operator int() const { return value; }
+	};
+
+	struct TriangleId
+	{
+		int value;
+
+		TriangleId() : value(-1) {}
+		explicit TriangleId(int v) : value(v) {}
+
+		bool IsValid() const { return value >= 0; }
+
+		bool operator==(TriangleId other) const { return value == other.value; }
+		bool operator!=(TriangleId other) const { return value != other.value; }
+		bool operator<(TriangleId other) const { return value < other.value; }
+		bool operator>(TriangleId other) const { return value > other.value; }
+
+		operator int() const { return value; }
+	};
+
 	// Common color definitions
 	inline const Color COLOR_TRANSPARENT = Color(1.0f, 0.0f, 1.0f, 0.0f);
 	inline const Color COLOR_WHITE = Color(1.0f, 1.0f, 1.0f, 1.0f);

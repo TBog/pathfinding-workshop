@@ -39,13 +39,13 @@ namespace Pathfinding
 			return false;
 		}
 
-		void ConvexHull(const DynVec<Vector2>& points, DynVec<int>& outHull)
+		void ConvexHull(const DynVec<Vector2>& points, DynVec<PointId>& outHull)
 		{
 			if (points.GetSize() > 2)
 			{
-				outHull.Add(0);
-				outHull.Add(1);
-				outHull.Add(2);
+				outHull.Add(PointId(0));
+				outHull.Add(PointId(1));
+				outHull.Add(PointId(2));
 			}
 		}
 
