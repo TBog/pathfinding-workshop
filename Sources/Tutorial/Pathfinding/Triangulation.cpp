@@ -422,15 +422,6 @@ namespace Pathfinding
 		return true;
 	}
 
-	Vector2 Triangulation::GetTriangleCenter(TriangleId tId) const
-	{
-		const Vector2& p1 = points[GetTriangle(tId).p1Id];
-		const Vector2& p2 = points[GetTriangle(tId).p2Id];
-		const Vector2& p3 = points[GetTriangle(tId).p3Id];
-
-		return (p1 + p2 + p3) / 3.f;
-	}
-
 	void Triangulation::BuildPointConnectivity()
 	{
 		// Resize to match the number of points, and clear all inner vectors
