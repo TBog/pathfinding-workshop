@@ -57,7 +57,7 @@ namespace Pathfinding
 		{
 		}
 
-		void AddTriangulationConstraints(const Triangulation& inTriangulation, const TriangulationConstraint& constraint, Triangulation& outTriangulation)
+		void AddTriangulationConstraint(Triangulation& triangulation, const TriangulationConstraint& constraint)
 		{
 		}
 

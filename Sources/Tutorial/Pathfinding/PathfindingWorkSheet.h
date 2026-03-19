@@ -48,7 +48,14 @@ namespace Pathfinding
 		virtual void ConvexHull(const DynVec<Vector2>& points, DynVec<int>& outHull) = 0;
 		virtual void RandomTriangulation(const DynVec<Vector2>& points, Triangulation& triangulation) = 0;
 		virtual void EdgeFlipping(Triangulation& triangulation, size_t maxIterations = 0) = 0;
-		virtual void AddTriangulationConstraints(const Triangulation& inTriangulation, const TriangulationConstraint& constraint, Triangulation& outTriangulation) = 0;
+		virtual void AddTriangulationConstraints(Triangulation& triangulation, const DynVec<TriangulationConstraint>& constraints)
+		{
+			for (int i = 0; i < constraints.GetSize(); i++)
+			{
+				AddTriangulationConstraint(triangulation, constraints[i]);
+			}
+		}
+		virtual void AddTriangulationConstraint(Triangulation& triangulation, const TriangulationConstraint& constraint) = 0;
 
 		//---------------------------------------------------------------
 		// Pathfinding Exercises

@@ -44,6 +44,7 @@ protected:
 	void _RunConvexHullExercise();
 	void _RunRandomTriangulationExercise();
 	void _RunDelaunayTriangulationExercise();
+	void _RunConstrainedDelaunayExercise();
 
 	static PathfindingWorkshopManager* s_Instance;
 	enum class Exercise

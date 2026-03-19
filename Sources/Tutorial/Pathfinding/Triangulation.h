@@ -104,6 +104,7 @@ namespace Pathfinding
 		{
 		}
 
+	protected:
 		// Deep copy constructor
 		Triangulation(const Triangulation& other)
 			: points(other.points.GetSize(), 64)
@@ -121,6 +122,7 @@ namespace Pathfinding
 			for (int i = 0; i < other.LOSTrianglePath.GetSize(); ++i)
 				LOSTrianglePath.Add(other.LOSTrianglePath[i]);
 		}
+	public:
 
 		// Deep copy assignment operator
 		Triangulation& operator=(const Triangulation& other)

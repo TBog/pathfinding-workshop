@@ -75,6 +75,9 @@ void PathfindingWorkshopManager::Update(float dt)
 	case Exercise::DelaunayTriangulation:
 		_RunDelaunayTriangulationExercise();
 		break;
+	case Exercise::ConstrainedDelaunay:
+		_RunConstrainedDelaunayExercise();
+		break;
 	default:
 		break;
 	}
@@ -553,3 +556,63 @@ void PathfindingWorkshopManager::_RunDelaunayTriangulationExercise()
 	//_DrawTriangleNeighbors(triangulation, triangleId, COLOR_GREEN, COLOR_YELLOW);
 }
 
+void PathfindingWorkshopManager::_RunConstrainedDelaunayExercise()
+{
+	const int pointCount = 16;
+	DynVec<Vector2> points(32, 32);
+	points.Add({ 0.f, 0.f });
+	points.Add({ 0.f, 5.f });
+	points.Add({ 5.f, 0.f });
+	points.Add({ 5.f, 5.f });
+	for (int i = 0; i < pointCount; i++)
+	{
+		float angle = m_rotatingAngle + (float)i / (float)pointCount * 2.f * (float)D3DX_PI;
+		float radius = 2.f + cosf(angle * 3.f) * .5f; // Add some noise to the radius for a more interesting shape
+		points.Add(Vector2(cosf(angle), sinf(angle)) * radius + Vector2(2.5f, 2.5f));
+	}
+
+	const int obstacleSize = 5;
+	const int obstacleCount = 1;
+
+	DynVec<TriangulationConstraint> constraints(obstacleCount * obstacleSize, 32);
+
+	DynVec<Vector2> obstacleCenters(32, 32);
+	DynVec<int> obstaclesIndexes(32, 32);
+	for (int x = 0; x < obstacleCount; x++)
+	{
+		float angle = m_rotatingAngle + (float)x / (float)obstacleCount * 2.f * (float)D3DX_PI;
+		Vector2 center(2.5f + cosf(angle) * 1.5f, 2.5f);
+		obstacleCenters.Add(center);
+
+		int obstacleStart = points.GetSize();
+		obstaclesIndexes.Add(obstacleStart);
+		for (int i = 0; i < obstacleSize; i++)
+		{
+			points.Add(center + Vector2(cosf(angle), sinf(angle)));
+			angle = angle + (2.f * (float)D3DX_PI) / obstacleSize;
+
+			TriangulationConstraint constraint;
+			constraint.p1 = obstacleStart + i;
+			constraint.p2 = obstacleStart + (i + 1) % obstacleSize;
+			constraints.Add(constraint);
+		}
+	}
+
+	Triangulation triangulation;
+
+	// Build Triangulation
+	Color wireColor = COLOR_YELLOW;
+	m_userWorkSheet->RandomTriangulation(points, triangulation);
+	m_userWorkSheet->EdgeFlipping(triangulation);
+	m_userWorkSheet->AddTriangulationConstraints(triangulation, constraints);
+
+	if (triangulation.GetRegisteredTriangleCount() == 0)
+	{
+		wireColor = COLOR_WHITE;
+		m_controlWorkSheet->RandomTriangulation(points, triangulation);
+		m_controlWorkSheet->EdgeFlipping(triangulation);
+		m_controlWorkSheet->AddTriangulationConstraints(triangulation, constraints);
+	}
+
+	_DrawTriangles(triangulation, wireColor, WithAlpha(COLOR_BLACK, .25f));
+}

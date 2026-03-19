@@ -250,7 +250,7 @@ namespace Pathfinding
 			}
 		}
 
-		int GetConstraintStartTriangle(Triangulation triangulation, int p1Id, int p2Id)
+		int GetConstraintStartTriangle(const Triangulation& triangulation, int p1Id, int p2Id)
 		{
 			DynVec<Triangle> triangles(triangulation.GetRegisteredTriangleCount(), 32);
 			triangulation.GetTriangles(triangles);
@@ -308,41 +308,35 @@ namespace Pathfinding
 			return false;
 		}
 
-		void AddTriangulationConstraints(const Triangulation& inTriangulation, const TriangulationConstraint& constraint, Triangulation& outTriangulation)
+		void AddTriangulationConstraint(Triangulation& triangulation, const TriangulationConstraint& constraint)
 		{
-			// Start with a copy of the input triangulation
-			outTriangulation = inTriangulation;
-
 			int p1Id = constraint.p1;
 			int p2Id = constraint.p2;
 
 			int iterations = 0;
-
-			// Optional: draw debug line if you have a debug render system
-			// DebugLine(outTriangulation.GetPoint(p1Id), outTriangulation.GetPoint(p2Id), COLOR_RED, true, 20);
 
 			while (p1Id != p2Id && iterations < 1000)
 			{
 				++iterations;
 
 				// If the edge already exists, nothing to do
-				if (TriangulationContainsEdge(outTriangulation, p1Id, p2Id))
+				if (TriangulationContainsEdge(triangulation, p1Id, p2Id))
 					return;
 
 				// Find the triangle to start from
-				int triangleId = GetConstraintStartTriangle(outTriangulation, p1Id, p2Id);
+				int triangleId = GetConstraintStartTriangle(triangulation, p1Id, p2Id);
 				if (triangleId == -1)
 					return;
 
 				// Get the two other points of the triangle (not p1Id)
 				int eP1 = -1, eP2 = -1;
-				outTriangulation.GetTriangle(triangleId).GetOtherPoints(p1Id, eP1, eP2);
+				triangulation.GetTriangle(triangleId).GetOtherPoints(p1Id, eP1, eP2);
 
-				Vector2 eP1V = outTriangulation.GetPoint(eP1);
-				Vector2 eP2V = outTriangulation.GetPoint(eP2);
+				Vector2 eP1V = triangulation.GetPoint(eP1);
+				Vector2 eP2V = triangulation.GetPoint(eP2);
 
-				Vector2 cP1V = outTriangulation.GetPoint(p1Id);
-				Vector2 cP2V = outTriangulation.GetPoint(p2Id);
+				Vector2 cP1V = triangulation.GetPoint(p1Id);
+				Vector2 cP2V = triangulation.GetPoint(p2Id);
 
 				Vector2 intersection;
 
@@ -365,7 +359,7 @@ namespace Pathfinding
 
 				// Find the neighbor triangle across the edge starting at p1Id
 				DynVec<TriangleNeighbourInfo> triangleNeighboursInfo(4, 4);
-				outTriangulation.GetTriangleNeighbours(triangleId, triangleNeighboursInfo);
+				triangulation.GetTriangleNeighbours(triangleId, triangleNeighboursInfo);
 				TriangleNeighbourInfo neighbourInfo;
 				for (int i = 0; i < triangleNeighboursInfo.GetSize(); ++i)
 				{
@@ -377,7 +371,7 @@ namespace Pathfinding
 				}
 
 				// Break the triangles and update p1Id to the new intersection point
-				p1Id = outTriangulation.BreakTriangles(triangleId, neighbourInfo.neighbourId, intersection);
+				p1Id = triangulation.BreakTriangles(triangleId, neighbourInfo.neighbourId, intersection);
 			}
 		}
 
