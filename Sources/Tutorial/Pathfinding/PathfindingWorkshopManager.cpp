@@ -558,7 +558,7 @@ void PathfindingWorkshopManager::_RunDelaunayTriangulationExercise()
 
 void PathfindingWorkshopManager::_RunConstrainedDelaunayExercise()
 {
-	const int pointCount = 16;
+	const int pointCount = 18;
 	DynVec<Vector2> points(32, 32);
 	points.Add({ 0.f, 0.f });
 	points.Add({ 0.f, 5.f });
@@ -566,8 +566,8 @@ void PathfindingWorkshopManager::_RunConstrainedDelaunayExercise()
 	points.Add({ 5.f, 5.f });
 	for (int i = 0; i < pointCount; i++)
 	{
-		float angle = m_rotatingAngle + (float)i / (float)pointCount * 2.f * (float)D3DX_PI;
-		float radius = 2.f + cosf(angle * 3.f) * .5f; // Add some noise to the radius for a more interesting shape
+		float angle = /*m_rotatingAngle*/ + (float)i / (float)pointCount * 2.f * (float)D3DX_PI;
+		float radius = 2.f + cosf(angle * 3.f) * .5f;
 		points.Add(Vector2(cosf(angle), sinf(angle)) * radius + Vector2(2.5f, 2.5f));
 	}
 
@@ -597,6 +597,16 @@ void PathfindingWorkshopManager::_RunConstrainedDelaunayExercise()
 			constraints.Add(constraint);
 		}
 	}
+
+	for (int i = 0; i < constraints.GetSize(); i += 1)
+	{
+		const TriangulationConstraint& c = constraints[i];
+		const Vector3 p1(points[c.p1].x, 0.f, points[c.p1].y);
+		const Vector3 p2(points[c.p2].x, 0.f, points[c.p2].y);
+		g_debugRender->AddIcosahedron(p1, .05f, COLOR_RED);
+		g_debugRender->AddIcosahedron(p2, .05f, COLOR_RED);
+	}
+
 
 	Triangulation triangulation;
 
