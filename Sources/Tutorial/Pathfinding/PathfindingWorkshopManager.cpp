@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <random>
 
 using namespace Pathfinding;
 //-------------------------------------------------------------------
@@ -85,7 +86,7 @@ void PathfindingWorkshopManager::Update(float dt)
 	m_userWorkSheet->Update(dt);
 	m_controlWorkSheet->Update(dt);
 
-	if (g_input->IsKeyPressed(VK_SPACE))
+	if (!g_input->IsKeyPressed(VK_SPACE))
 	{
 		m_rotatingAngle += dt * .5f;
 	}
@@ -235,7 +236,7 @@ void PathfindingWorkshopManager::_RunSignedAreaExercise()
 
 void PathfindingWorkshopManager::_RunInsideTriangleExercise()
 {
-	const Vector2 size(5.f, 5.f);
+	const Vector2 size(10.f, 10.f);
 	const size_t pointCount = 256;
 	std::vector<Vector2> points;
 	points.reserve(pointCount);
@@ -251,17 +252,17 @@ void PathfindingWorkshopManager::_RunInsideTriangleExercise()
 		for (size_t col = 0; col < gridCols; ++col) {
 			if (points.size() >= pointCount)
 				break;
-			float x = col * dx;
-			float y = row * dy;
+			float x = col * dx - 5.f;
+			float y = row * dy - 5.f;
 			points.emplace_back(x, y);
 		}
 	}
 
-	Vector2 triangle[3] = { Vector2(1.f, 1.f), Vector2(5.f, 1.f), Vector2(2.f, 4.f) };
+	Vector2 triangle[3] = { Vector2(-1.f, -1.f), Vector2(5.f, -1.f), Vector2(2.f, 4.f) };
 	// set triangle with the rotation from the previous exercise
 	{
 		const float angle = m_rotatingAngle;
-		const Vector2 center(2.5f, 2.5f);
+		const Vector2 center(.5f, .5f);
 		for (int i = 0; i < 3; i++)
 		{
 			Vector2 dir = triangle[i] - center;
@@ -295,7 +296,7 @@ void PathfindingWorkshopManager::_RunInsideTriangleExercise()
 
 void PathfindingWorkshopManager::_RunInsideTriangleCircumcircleExercise()
 {
-	const Vector2 size(5.f, 5.f);
+	const Vector2 size(10.f, 10.f);
 	const size_t pointCount = 600;
 	std::vector<Vector2> points;
 	points.reserve(pointCount);
@@ -311,17 +312,17 @@ void PathfindingWorkshopManager::_RunInsideTriangleCircumcircleExercise()
 		for (size_t col = 0; col < gridCols; ++col) {
 			if (points.size() >= pointCount)
 				break;
-			float x = col * dx;
-			float y = row * dy;
+			float x = col * dx - 5.f;
+			float y = row * dy - 5.f;
 			points.emplace_back(x, y);
 		}
 	}
 
-	Vector2 triangle[3] = { Vector2(2.5f, 2.5f), Vector2(2.5f, 4.2f), Vector2(4.2f, 2.5f) };
+	Vector2 triangle[3] = { Vector2(-0.5f, -0.5f), Vector2(-0.5f, 3.2f), Vector2(3.2f, -0.5f) };
 	// set triangle with the rotation from the previous exercise
 	{
 		const float angle = m_rotatingAngle;
-		const Vector2 center(2.5f, 2.5f);
+		const Vector2 center(0.f, 0.f);
 		for (int i = 0; i < 3; i++)
 		{
 			Vector2 dir = triangle[i] - center;
@@ -337,7 +338,7 @@ void PathfindingWorkshopManager::_RunInsideTriangleCircumcircleExercise()
 		const Vector3 tA = Vector3(triangle[0].x, 0.f, triangle[0].y);
 		const Vector3 tB = Vector3(triangle[1].x, 0.f, triangle[1].y);
 		const Vector3 tC = Vector3(triangle[2].x, 0.f, triangle[2].y);
-		g_debugRender->AddCircle((tB + tC) * .5f, sqrtf(DistSqr(triangle[1], triangle[2])) * .5f, Vector3(0.f, 1.f, 0.f), WithAlpha(COLOR_BLACK, .25f));
+		g_debugRender->AddCircle((tB + tC) * .5f, Distance(triangle[1], triangle[2]) * .5f, Vector3(0.f, 1.f, 0.f), WithAlpha(COLOR_BLACK, .25f));
 		g_debugRender->AddLine(tA, tB, COLOR_WHITE);
 		g_debugRender->AddLine(tA, tC, COLOR_WHITE);
 		g_debugRender->AddLine(tC, tB, COLOR_WHITE);
@@ -368,14 +369,14 @@ void PathfindingWorkshopManager::_RunConvexHullExercise()
 {
 	const int pointCount = 16;
 	DynVec<Vector2> points(32, 32);
-	points.Add({0.f, 0.f});
+	points.Add({ -5.f, -5.f });
 	for (int i = 0; i < pointCount; i++)
 	{
 		float angle = m_rotatingAngle + (float)i / (float)pointCount * 2.f * (float)D3DX_PI;
-		float radius = 2.f + cosf(angle * 3.f) * .5f; // Add some noise to the radius for a more interesting shape
-		points.Add(Vector2(cosf(angle), sinf(angle)) * radius + Vector2(2.5f, 2.5f));
+		float radius = 4.f + cosf(angle * 3.f) * 1.5f;
+		points.Add(Vector2(cosf(angle), sinf(angle)) * radius);
 	}
-	points.Add({5.f, 5.f});
+	points.Add({ 5.f, 5.f });
 
 	DynVec<PointId> controlHull(points.GetSize(), 32);
 	m_controlWorkSheet->ConvexHull(points, controlHull);
@@ -392,9 +393,9 @@ void PathfindingWorkshopManager::_RunConvexHullExercise()
 	_DrawConvexHull(points, controlHull, WithAlpha(COLOR_WHITE, 0.5f), .05f);
 }
 
-void _DrawTriangles(Triangulation& triangulation, const Color& wireColor, const Color& triangleColor = COLOR_TRANSPARENT)
+void _DrawTriangles(const Triangulation& triangulation, const Color& wireColor, const Color& triangleColor = COLOR_TRANSPARENT)
 {
-	DynVec<Vector2>& points = triangulation.points;
+	const DynVec<Vector2>& points = triangulation.GetPoints();
 	DynVec<Triangle> triangles(triangulation.GetTriangleCount(), 32);
 	triangulation.GetTriangles(triangles);
 	for (int i = 0; i < triangles.GetSize(); i += 1)
@@ -459,14 +460,14 @@ void PathfindingWorkshopManager::_RunRandomTriangulationExercise()
 {
 	const int pointCount = 16;
 	DynVec<Vector2> points(32, 32);
-	points.Add({ 0.f, 0.f });
+	points.Add({ -5.f, -5.f });
+	points.Add({ 5.f, 5.f });
 	for (int i = 0; i < pointCount; i++)
 	{
 		float angle = m_rotatingAngle + (float)i / (float)pointCount * 2.f * (float)D3DX_PI;
-		float radius = 2.f + cosf(angle * 3.f) * .5f; // Add some noise to the radius for a more interesting shape
-		points.Add(Vector2(cosf(angle), sinf(angle)) * radius + Vector2(2.5f, 2.5f));
+		float radius = 4.f + cosf(angle * 3.f) * 1.5f;
+		points.Add(Vector2(cosf(angle), sinf(angle)) * radius);
 	}
-	points.Add({ 5.f, 5.f });
 
 	for (int i = 0; i < points.GetSize(); i += 1)
 	{
@@ -491,14 +492,14 @@ void PathfindingWorkshopManager::_RunDelaunayTriangulationExercise()
 {
 	const int pointCount = 16;
 	DynVec<Vector2> points(32, 32);
-	points.Add({ 0.f, 0.f });
+	points.Add({ -5.f, -5.f });
+	points.Add({ 5.f, 5.f });
 	for (int i = 0; i < pointCount; i++)
 	{
 		float angle = m_rotatingAngle + (float)i / (float)pointCount * 2.f * (float)D3DX_PI;
-		float radius = 2.f + cosf(angle * 3.f) * .5f; // Add some noise to the radius for a more interesting shape
-		points.Add(Vector2(cosf(angle), sinf(angle)) * radius + Vector2(2.5f, 2.5f));
+		float radius = 4.f + cosf(angle * 3.f) * 1.5f; // Add some noise to the radius for a more interesting shape
+		points.Add(Vector2(cosf(angle), sinf(angle)) * radius);
 	}
-	points.Add({ 5.f, 5.f });
 
 	for (int i = 0; i < points.GetSize(); i += 1)
 	{
@@ -558,37 +559,42 @@ void PathfindingWorkshopManager::_RunDelaunayTriangulationExercise()
 
 void PathfindingWorkshopManager::_RunConstrainedDelaunayExercise()
 {
-	const int pointCount = 18;
+	std::mt19937 rng(1337); // Fixed seed for reproducibility
+	std::uniform_real_distribution<float> distX(-4.9f, 4.9f);
+	std::uniform_real_distribution<float> distY(-4.9f, 4.9f);
+
+	const int pointCount = 28;
 	DynVec<Vector2> points(32, 32);
-	points.Add({ 0.f, 0.f });
-	points.Add({ 0.f, 5.f });
-	points.Add({ 5.f, 0.f });
+	points.Add({ -5.f, -5.f });
+	points.Add({ -5.f, 5.f });
+	points.Add({ 5.f, -5.f });
 	points.Add({ 5.f, 5.f });
 	for (int i = 0; i < pointCount; i++)
 	{
-		float angle = /*m_rotatingAngle*/ + (float)i / (float)pointCount * 2.f * (float)D3DX_PI;
-		float radius = 2.f + cosf(angle * 3.f) * .5f;
-		points.Add(Vector2(cosf(angle), sinf(angle)) * radius + Vector2(2.5f, 2.5f));
+		//float angle = /*m_rotatingAngle*/ + (float)i / (float)pointCount * 2.f * (float)D3DX_PI;
+		//float radius = 2.f + cosf(angle * 3.f) * .5f;
+		//points.Add(Vector2(cosf(angle), sinf(angle)) * radius + Vector2(2.5f, 2.5f));
+
+		points.Add({distX(rng), distY(rng)});
 	}
 
-	const int obstacleSize = 5;
 	const int obstacleCount = 1;
+	const int obstacleSize = 5;
+	const float obstacleRadius = 2.5f;
 
 	DynVec<TriangulationConstraint> constraints(obstacleCount * obstacleSize, 32);
 
-	DynVec<Vector2> obstacleCenters(32, 32);
-	DynVec<PointId> obstaclesIndexes(32, 32);
+	DynVec<Vector2> obstacleCenters(obstacleCount, 32);
 	for (int x = 0; x < obstacleCount; x++)
 	{
 		float angle = m_rotatingAngle + (float)x / (float)obstacleCount * 2.f * (float)D3DX_PI;
-		Vector2 center(2.5f + cosf(angle) * 1.5f, 2.5f);
+		Vector2 center(cosf(angle) * 1.5f, (float)x / (float)obstacleCount * 5.f * ((x % 2) * 2 - 1));
 		obstacleCenters.Add(center);
 
 		PointId obstacleStart = PointId(points.GetSize());
-		obstaclesIndexes.Add(obstacleStart);
 		for (int i = 0; i < obstacleSize; i++)
 		{
-			points.Add(center + Vector2(cosf(angle), sinf(angle)));
+			points.Add(center + Vector2(cosf(angle), sinf(angle)) * obstacleRadius);
 			angle = angle + (2.f * (float)D3DX_PI) / obstacleSize;
 
 			TriangulationConstraint constraint;
@@ -596,8 +602,18 @@ void PathfindingWorkshopManager::_RunConstrainedDelaunayExercise()
 			constraint.p2 = PointId(obstacleStart.value + (i + 1) % obstacleSize);
 			constraints.Add(constraint);
 		}
+
+		for (int i = 0; i < obstacleSize; i++)
+		{
+			TriangulationConstraint& constraint = constraints[constraints.GetSize() - i - 1];
+			const Vector3 p1(points[constraint.p1].x, 0.f, points[constraint.p1].y);
+			const Vector3 p2(points[constraint.p2].x, 0.f, points[constraint.p2].y);
+			const Vector3 p3(center.x, 0.f, center.y);
+			g_debugRender->AddTriangle(p1, p2, p3, WithAlpha(COLOR_RED, .25f));
+		}
 	}
 
+	Vector3 p3(2.5f, 0.f, 2.5f);
 	for (int i = 0; i < constraints.GetSize(); i += 1)
 	{
 		const TriangulationConstraint& c = constraints[i];

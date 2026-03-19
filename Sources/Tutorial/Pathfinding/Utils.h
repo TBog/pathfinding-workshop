@@ -48,6 +48,15 @@ namespace Pathfinding
 		return result;
 	}
 
+	template <typename T>
+	DynVec<T> DynVecFromStdVector(const std::vector<T>& vec, int grow = -1)
+	{
+		DynVec<T> result(static_cast<int>(vec.size()), grow < 0 ? vec.size() : grow);
+		for (const auto& item : vec)
+			result.Add(item);
+		return result;
+	}
+
 	inline bool FindIntersection(const Vector2& x1, const Vector2& y1, const Vector2& x2, const Vector2& y2, Vector2& intersection)
 	{
 		float a1 = y1.y - x1.y;
@@ -75,8 +84,13 @@ namespace Pathfinding
 
 	inline float DistSqr(const Vector2& x, const Vector2& y)
 	{
-		Vector2 d = x - y;
+		const Vector2 d = x - y;
 		return d.x * d.x + d.y * d.y;
+	}
+
+	inline float Distance(const Vector2& x, const Vector2& y)
+	{
+		return sqrtf(DistSqr(x, y));
 	}
 
 	inline bool FindSegmentIntersection(const Vector2& x1, const Vector2& y1, const Vector2& x2, const Vector2& y2, Vector2& inter)
