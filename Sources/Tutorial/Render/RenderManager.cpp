@@ -149,7 +149,7 @@ HRESULT RenderManager::CreateDevice(HWND hWnd)
 	m_hWnd = hWnd;
 
 	RECT rect;
-	GetWindowRect(m_hWnd, &rect);
+	GetClientRect(m_hWnd, &rect);
 	m_resolutionWidth = rect.right - rect.left;
 	m_resolutionHeight = rect.bottom - rect.top;
 
