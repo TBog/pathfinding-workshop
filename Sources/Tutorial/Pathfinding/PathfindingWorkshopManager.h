@@ -3,9 +3,13 @@
 #ifndef __PATHFINDINGWORKSHOPMANAGER_H__
 #define __PATHFINDINGWORKSHOPMANAGER_H__
 
+#include "..\Utils\DynVec.h"
+#include "Types.h"
+
 namespace Pathfinding
 {
 	class PathfindingWorkSheet;
+	struct TriangulationConstraint;
 }
 
 //===================================================================
@@ -86,16 +90,25 @@ protected:
 		L"AStarPathfinding",
 	};
 
+	void GenerateRandomPointsAndObstacles(int pointCount, DynVec<Pathfinding::Vector2>& obstacleCenters, DynVec<Pathfinding::PointId>& obstaclesIndexes, DynVec<Pathfinding::TriangulationConstraint>& constraints);
+	bool IsInsideObstacle(DynVec<Pathfinding::Vector2>& obstacleCenters, DynVec<Pathfinding::PointId>& obstaclesIndexes, const Pathfinding::Vector2& point) const;
+
 	unsigned int m_randomSeed{ 1337 };
 	float m_rotatingAngle{ 0.f };
 	bool m_upPressed{ false };
 	bool m_downPressed{ false };
+	bool m_leftPressed{ false };
+	bool m_rightPressed{ false };
 	bool m_acceptPressed{ false };
 	bool m_showDebugMenu{ false };
 	int m_menuItem{ 0 };
 	Exercise m_selectedExercise;
 	Pathfinding::PathfindingWorkSheet* m_userWorkSheet{ nullptr };
 	Pathfinding::PathfindingWorkSheet* m_controlWorkSheet{ nullptr };
+	DynVec<Pathfinding::Vector2> m_points;
+
+	const float PI = (float)D3DX_PI;
+	const int OBSTACLE_POINT_COUNT = 5;
 };
 
 #define g_pathfindingWorkshopManager PathfindingWorkshopManager::Get()

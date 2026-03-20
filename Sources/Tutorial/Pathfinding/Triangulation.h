@@ -165,12 +165,18 @@ namespace Pathfinding
 			return points;
 		}
 
+		const std::vector<std::vector<PointId>>& GetNeighbours() const
+		{
+			return pointNeighbours;
+		}
+
 		const Vector2& GetPoint(PointId pointId) const
 		{
 			return points[pointId];
 		}
 
 		TriangleId AddTriangle(PointId p1Id, PointId p2Id, PointId p3Id);
+		void SetTriangleBlocked(TriangleId tId, bool blocked);
 
 		void RemoveTriangle(TriangleId tId)
 		{

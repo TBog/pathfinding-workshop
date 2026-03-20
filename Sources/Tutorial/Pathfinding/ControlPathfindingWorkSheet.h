@@ -5,6 +5,8 @@
 #include "Utils.h"
 
 #include <algorithm>
+#include <queue>
+#include <unordered_set>
 
 namespace Pathfinding
 {
@@ -26,6 +28,21 @@ namespace Pathfinding
 			Cell cell;
 			int parent;
 			QueueEntry(const Cell& c, int p) : cell(c), parent(p) {}
+		};
+
+		struct AStarNode
+		{
+			PointId pointId;
+			float cost;
+			PointId parent;
+
+			AStarNode(PointId pointId, float cost, PointId parent)
+				: pointId(pointId), cost(cost), parent(parent)
+			{
+			}
+
+			// For priority queue (min-heap)
+			bool operator>(const AStarNode& other) const { return cost > other.cost; }
 		};
 
 	public:
@@ -286,7 +303,7 @@ namespace Pathfinding
 				}
 			}
 
-			return TriangleId(-1);
+			return TriangleId();
 		}
 
 		bool TriangulationContainsEdge(const Triangulation& triangulation, PointId p1, PointId p2)
@@ -434,8 +451,206 @@ namespace Pathfinding
 			// No path found, outPath remains empty
 		}
 
+		/*void AStarPathfinding(const Triangulation& triangulation, const Vector2& startPoint, const Vector2& goalPoint, DynVec<Vector2>& outPath) override
+		{
+			int startTriangleId, goalTriangleId;
+
+			startTriangleId = FindTriangle(triangulation, startPoint);
+			goalTriangleId = FindTriangle(triangulation, goalPoint);
+
+			std::priority_queue<AStarNode, std::vector<AStarNode>, std::greater<AStarNode>> queue;
+			HashSet<int> visited = new HashSet<int>();
+
+			List<Triangle> triangles = triangulation.triangles;
+			List<Vector2> points = triangulation.points;
+			List<List<int>> neighbours = triangulation.pointNeighbours;
+
+			points.Add(startPoint);
+			int startIdx = points.Count - 1;
+
+			points.Add(goalPoint);
+			int goalIdx = points.Count - 1;
+
+			int startP1 = triangles[startTriangleId].p1Id;
+			int startP2 = triangles[startTriangleId].p2Id;
+			int startP3 = triangles[startTriangleId].p3Id;
+			neighbours.Add(new List<int>());
+			neighbours.Add(new List<int>());
+
+			neighbours[startIdx].Add(startP1);
+			neighbours[startP1].Add(startIdx);
+
+			neighbours[startIdx].Add(startP2);
+			neighbours[startP2].Add(startIdx);
+
+			neighbours[startIdx].Add(startP3);
+			neighbours[startP3].Add(startIdx);
+
+			int goalP1 = triangles[goalTriangleId].p1Id;
+			int goalP2 = triangles[goalTriangleId].p2Id;
+			int goalP3 = triangles[goalTriangleId].p3Id;
+
+			neighbours[goalIdx].Add(goalP1);
+			neighbours[goalP1].Add(goalIdx);
+
+			neighbours[goalIdx].Add(goalP2);
+			neighbours[goalP2].Add(goalIdx);
+
+			neighbours[goalIdx].Add(goalP3);
+			neighbours[goalP3].Add(goalIdx);
+
+			queue.Enqueue(new AStarNode(startIdx, 0, -1), 0);
+			int[] parent = new int[points.Count];
+			float[] minCost = new float[points.Count];
+
+			while (queue.Count > 0)
+			{
+				AStarNode node = queue.Dequeue();
+				int pointId = node.pointId;
+
+				if (visited.Contains(pointId))
+				{
+					continue;
+				}
+
+				parent[pointId] = node.parent;
+				minCost[pointId] = node.cost;
+				visited.Add(pointId);
+				Debug.Log("Expanding Node ID: " + node.pointId.ToString() + " CST: " + node.cost.ToString() + " PRT: " + node.parent.ToString());
+
+				if (pointId == goalIdx)
+				{
+					break;
+				}
+
+				for (int i = 0; i < neighbours[pointId].Count; i++)
+				{
+					int neigh = neighbours[pointId][i];
+
+					if (visited.Contains(neigh))
+					{
+						continue;
+					}
+
+					float cost;
+					int prnt = node.parent;
+					if (prnt != -1 && triangulation.CheckLineOfSight(points[neigh], points[prnt]))
+					{
+						cost = minCost[prnt] + Dist(points[prnt], points[neigh]);
+						queue.Enqueue(new AStarNode(neigh, cost, prnt), cost);
+						Debug.Log("Add Node ID: " + neigh.ToString() + " CST: " + cost.ToString() + " PRT: " + prnt.ToString());
+					}
+					else
+					{
+						cost = node.cost + Dist(points[pointId], points[neigh]);
+						queue.Enqueue(new AStarNode(neigh, cost, pointId), cost);
+						Debug.Log("Add Node ID: " + neigh.ToString() + " CST: " + cost.ToString() + " PRT: " + pointId.ToString());
+					}
+
+				}
+			}
+
+			List<Vector2> path = new List<Vector2>();
+			int nodeId = goalIdx;
+			while (nodeId >= 0)
+			{
+				path.Add(points[nodeId]);
+				nodeId = parent[nodeId];
+			}
+
+			return path;
+		}*/
+
 		void AStarPathfinding(const Triangulation& triangulation, const Vector2& startPoint, const Vector2& goalPoint, DynVec<Vector2>& outPath) override
 		{
+			outPath.Clear();
+
+			// Copy points and neighbours for local modification
+			DynVec<Vector2> points(triangulation.GetPoints().GetSize(), 32);
+			for (int i = 0; i < triangulation.GetPoints().GetSize(); i += 1)
+				points.Add(triangulation.GetPoints()[i]);
+			std::vector<std::vector<PointId>> neighbours;
+			{
+				const auto& pn = triangulation.GetNeighbours();
+				neighbours.assign(pn.begin(), pn.end());
+			}
+
+			// Find triangles containing start and goal
+			TriangleId startTriangleId = triangulation.FindTriangle(startPoint);
+			TriangleId goalTriangleId = triangulation.FindTriangle(goalPoint);
+			if (!startTriangleId.IsValid() || !goalTriangleId.IsValid())
+				return;
+
+			// Add start and goal points
+			PointId startIdx(points.Add(startPoint));
+			PointId goalIdx(points.Add(goalPoint));
+
+			// Expand neighbours for new points
+			neighbours.resize(points.GetSize());
+
+			// Connect start point to its triangle's vertices
+			const Triangle& startTri = triangulation.GetTriangle(startTriangleId);
+			const PointId& startP1 = startTri.p1Id;
+			const PointId& startP2 = startTri.p2Id;
+			const PointId& startP3 = startTri.p3Id;
+			neighbours[startIdx].push_back(startP1); neighbours[startP1].push_back(startIdx);
+			neighbours[startIdx].push_back(startP2); neighbours[startP2].push_back(startIdx);
+			neighbours[startIdx].push_back(startP3); neighbours[startP3].push_back(startIdx);
+
+			// Connect goal point to its triangle's vertices
+			const Triangle& goalTri = triangulation.GetTriangle(goalTriangleId);
+			const PointId& goalP1 = goalTri.p1Id;
+			const PointId& goalP2 = goalTri.p2Id;
+			const PointId& goalP3 = goalTri.p3Id;
+			neighbours[goalIdx].push_back(goalP1); neighbours[goalP1].push_back(goalIdx);
+			neighbours[goalIdx].push_back(goalP2); neighbours[goalP2].push_back(goalIdx);
+			neighbours[goalIdx].push_back(goalP3); neighbours[goalP3].push_back(goalIdx);
+
+			// A* search
+			std::priority_queue<AStarNode, std::vector<AStarNode>, std::greater<AStarNode>> queue;
+			std::unordered_set<PointId> visited;
+			std::vector<PointId> parent(points.GetSize(), PointId());
+			std::vector<float> minCost(points.GetSize(), FLT_MAX);
+
+			queue.emplace(startIdx, 0.0f, PointId());
+
+			while (!queue.empty()) {
+				AStarNode node = queue.top(); queue.pop();
+				const PointId& pointId = node.pointId;
+
+				if (visited.count(pointId)) continue;
+
+				parent[pointId] = node.parent;
+				minCost[pointId] = node.cost;
+				visited.insert(pointId);
+
+				if (pointId == goalIdx) break;
+
+				for (PointId neigh : neighbours[pointId]) {
+					if (visited.count(neigh)) continue;
+
+					float cost;
+					PointId prnt = node.parent;
+					if (prnt != -1 && triangulation.CheckLineOfSight(points[neigh], points[prnt])) {
+						cost = minCost[prnt] + Distance(points[prnt], points[neigh]);
+						queue.emplace(neigh, cost, prnt);
+					}
+					else {
+						cost = node.cost + Distance(points[pointId], points[neigh]);
+						queue.emplace(neigh, cost, pointId);
+					}
+				}
+			}
+
+			// Reconstruct path
+			PointId nodeId = goalIdx;
+			while (nodeId >= 0) {
+				outPath.Add(points[nodeId]);
+				nodeId = parent[nodeId];
+			}
+			// Reverse path
+			for (int l = 0, r = outPath.GetSize() - 1; l < r; ++l, --r)
+				std::swap(outPath[l], outPath[r]);
 		}
 
 		void SmoothPath(const Triangulation& triangulation, const DynVec<Vector2>& path, DynVec<Vector2>& outPath) override

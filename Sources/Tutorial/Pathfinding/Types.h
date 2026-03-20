@@ -3,6 +3,7 @@
 #include <vector>
 #include <limits>
 #include <stdexcept>
+#include <functional> // for the hash specialization
 
 namespace Pathfinding
 {
@@ -118,5 +119,14 @@ namespace Pathfinding
 		size_t m_rows;
 		size_t m_cols;
 		std::vector<std::vector<T>> m_data;
+	};
+}
+
+namespace std {
+	template <>
+	struct hash<Pathfinding::PointId> {
+		std::size_t operator()(const Pathfinding::PointId& pid) const noexcept {
+			return std::hash<int>()(pid.value);
+		}
 	};
 }

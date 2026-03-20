@@ -21,6 +21,7 @@ PathfindingWorkshopManager* PathfindingWorkshopManager::s_Instance = NULL;
 PathfindingWorkshopManager::PathfindingWorkshopManager()
 	: m_userWorkSheet(new UserPathfindingWorkSheet())
 	, m_controlWorkSheet(new ControlPathfindingWorkSheet())
+	, m_points(32, 32)
 {
 }
 
@@ -540,40 +541,49 @@ void PathfindingWorkshopManager::_RunDelaunayTriangulationExercise()
 	//_DrawTriangleNeighbors(triangulation, triangleId, COLOR_GREEN, COLOR_YELLOW);
 }
 
-void PathfindingWorkshopManager::_RunConstrainedDelaunayExercise()
+void PathfindingWorkshopManager::GenerateRandomPointsAndObstacles(int pointCount, DynVec<Vector2>& obstacleCenters, DynVec<PointId>& obstaclesIndexes, DynVec<Pathfinding::TriangulationConstraint>& constraints)
 {
+	const bool leftPressed = g_input->IsKeyPressed(VK_LEFT);
+	const bool rightPressed = g_input->IsKeyPressed(VK_RIGHT);
+	const bool leftJustPressed = !m_leftPressed && leftPressed;
+	const bool rightJustPressed = !m_rightPressed && rightPressed;
+
+	m_leftPressed = leftPressed;
+	m_rightPressed = rightPressed;
+
+	if (leftJustPressed)
+		m_randomSeed -= 1;
+	if (rightJustPressed)
+		m_randomSeed += 1;
+
 	std::mt19937 rng(m_randomSeed);
 	std::uniform_real_distribution<float> distX(-4.9f, 4.9f);
 	std::uniform_real_distribution<float> distY(-4.9f, 4.9f);
 
-	const int pointCount = 28;
-	DynVec<Vector2> points(32, 32);
-	points.Add({ -5.f, -5.f });
-	points.Add({ -5.f, 5.f });
-	points.Add({ 5.f, -5.f });
-	points.Add({ 5.f, 5.f });
+	m_points.Add({ -5.f, -5.f });
+	m_points.Add({ -5.f, 5.f });
+	m_points.Add({ 5.f, -5.f });
+	m_points.Add({ 5.f, 5.f });
 	for (int i = 0; i < pointCount; i++)
 	{
-		points.Add({ distX(rng), distY(rng) });
+		m_points.Add({ distX(rng), distY(rng) });
 	}
 
 	const int obstacleCount = 1;
-	const int obstacleSize = 5;
+	const int obstacleSize = OBSTACLE_POINT_COUNT;
 	const float obstacleRadius = 2.5f;
 
-	DynVec<TriangulationConstraint> constraints(obstacleCount * obstacleSize, 32);
-
-	DynVec<Vector2> obstacleCenters(obstacleCount, 32);
 	for (int x = 0; x < obstacleCount; x++)
 	{
 		float angle = m_rotatingAngle + (float)x / (float)obstacleCount * 2.f * (float)D3DX_PI;
 		Vector2 center(cosf(angle) * 1.5f, (float)x / (float)obstacleCount * 5.f * ((x % 2) * 2 - 1));
 		obstacleCenters.Add(center);
 
-		PointId obstacleStart = PointId(points.GetSize());
+		PointId obstacleStart = PointId(m_points.GetSize());
+		obstaclesIndexes.Add(obstacleStart);
 		for (int i = 0; i < obstacleSize; i++)
 		{
-			points.Add(center + Vector2(cosf(angle), sinf(angle)) * obstacleRadius);
+			m_points.Add(center + Vector2(cosf(angle), sinf(angle)) * obstacleRadius);
 			angle = angle + (2.f * (float)D3DX_PI) / obstacleSize;
 
 			TriangulationConstraint constraint;
@@ -585,8 +595,8 @@ void PathfindingWorkshopManager::_RunConstrainedDelaunayExercise()
 		for (int i = 0; i < obstacleSize; i++)
 		{
 			TriangulationConstraint& constraint = constraints[constraints.GetSize() - i - 1];
-			const Vector3 p1(points[constraint.p1].x, 0.f, points[constraint.p1].y);
-			const Vector3 p2(points[constraint.p2].x, 0.f, points[constraint.p2].y);
+			const Vector3 p1(m_points[constraint.p1].x, 0.f, m_points[constraint.p1].y);
+			const Vector3 p2(m_points[constraint.p2].x, 0.f, m_points[constraint.p2].y);
 			const Vector3 p3(center.x, 0.f, center.y);
 			g_debugRender->AddTriangle(p1, p2, p3, WithAlpha(COLOR_RED, .25f));
 		}
@@ -596,25 +606,34 @@ void PathfindingWorkshopManager::_RunConstrainedDelaunayExercise()
 	for (int i = 0; i < constraints.GetSize(); i += 1)
 	{
 		const TriangulationConstraint& c = constraints[i];
-		const Vector3 p1(points[c.p1].x, 0.f, points[c.p1].y);
-		const Vector3 p2(points[c.p2].x, 0.f, points[c.p2].y);
+		const Vector3 p1(m_points[c.p1].x, 0.f, m_points[c.p1].y);
+		const Vector3 p2(m_points[c.p2].x, 0.f, m_points[c.p2].y);
 		g_debugRender->AddIcosahedron(p1, .05f, COLOR_RED);
 		g_debugRender->AddIcosahedron(p2, .05f, COLOR_RED);
 	}
+}
 
+void PathfindingWorkshopManager::_RunConstrainedDelaunayExercise()
+{
+	const int pointCount = 28;
+	m_points.Clear();
+	DynVec<Vector2> obstacleCenters(5, 5);
+	DynVec<PointId> obstaclesIndexes(5, 5);
+	DynVec<TriangulationConstraint> constraints(25, 32);
+	GenerateRandomPointsAndObstacles(pointCount, obstacleCenters, obstaclesIndexes, constraints);
 
 	Triangulation triangulation;
 
 	// Build Triangulation
 	Color wireColor = COLOR_YELLOW;
-	m_userWorkSheet->RandomTriangulation(points, triangulation);
+	m_userWorkSheet->RandomTriangulation(m_points, triangulation);
 	m_userWorkSheet->EdgeFlipping(triangulation);
 	m_userWorkSheet->AddTriangulationConstraints(triangulation, constraints);
 
 	if (triangulation.GetTriangleCount() == 0)
 	{
 		wireColor = COLOR_WHITE;
-		m_controlWorkSheet->RandomTriangulation(points, triangulation);
+		m_controlWorkSheet->RandomTriangulation(m_points, triangulation);
 		m_controlWorkSheet->EdgeFlipping(triangulation);
 		m_controlWorkSheet->AddTriangulationConstraints(triangulation, constraints);
 	}
@@ -663,9 +682,6 @@ bool GenerateMaze(const Cell& crt, const Cell& goal, Grid2D<int>& vis, DynVec<Ce
 
 void PathfindingWorkshopManager::_RunGridPathfindingExercise()
 {
-	static bool m_leftPressed = false;
-	static bool m_rightPressed = false;
-
 	const bool leftPressed = g_input->IsKeyPressed(VK_LEFT);
 	const bool rightPressed = g_input->IsKeyPressed(VK_RIGHT);
 	const bool leftJustPressed = !m_leftPressed && leftPressed;
@@ -747,8 +763,8 @@ void PathfindingWorkshopManager::_RunGridPathfindingExercise()
 		m_controlWorkSheet->GridPathfinding(map, start, goal, gridPath);
 	}
 
-	g_debugRender->AddCircle({ start.x - size * .5f, 0.f, start.y - size *.5f }, .25f, { 0.f, 1.f, 0.f }, COLOR_RED);
-	g_debugRender->AddCircle({ goal.x - size * .5f, 0.f, goal.y - size *.5f }, .25f, { 0.f, 1.f, 0.f }, COLOR_BLUE);
+	g_debugRender->AddCircle({ start.x - size * .5f, 0.f, start.y - size * .5f }, .25f, { 0.f, 1.f, 0.f }, COLOR_RED);
+	g_debugRender->AddCircle({ goal.x - size * .5f, 0.f, goal.y - size * .5f }, .25f, { 0.f, 1.f, 0.f }, COLOR_BLUE);
 
 	for (int i = 0; i < gridPath.GetSize() - 1; i++)
 	{
@@ -777,20 +793,72 @@ void PathfindingWorkshopManager::_RunGridPathfindingExercise()
 	}
 }
 
+bool PathfindingWorkshopManager::IsInsideObstacle(DynVec<Vector2>& obstacleCenters, DynVec<PointId>& obstaclesIndexes, const Vector2& point) const
+{
+	const int obstacleSize = OBSTACLE_POINT_COUNT;
+
+	for (int i = 0; i < obstaclesIndexes.GetSize(); i++)
+	{
+		int obstacleStart = obstaclesIndexes[i];
+		for (int j = 0; j < obstacleSize; j++)
+		{
+			Vector2 p1 = m_points[obstacleStart + j];
+			Vector2 p2 = m_points[obstacleStart + (j + 1) % obstacleSize];
+
+			if (m_controlWorkSheet->InsideTriangle(obstacleCenters[i], p1, p2, point))
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 void PathfindingWorkshopManager::_RunAStarPathfindingExercise()
 {
-	std::mt19937 rng(m_randomSeed);
-	std::uniform_real_distribution<float> distX(-4.9f, 4.9f);
-	std::uniform_real_distribution<float> distY(-4.9f, 4.9f);
-
 	const int pointCount = 28;
-	DynVec<Vector2> points(32, 32);
-	points.Add({ -5.f, -5.f });
-	points.Add({ -5.f, 5.f });
-	points.Add({ 5.f, -5.f });
-	points.Add({ 5.f, 5.f });
-	for (int i = 0; i < pointCount; i++)
+	m_points.Clear();
+	DynVec<Vector2> obstacleCenters(5, 5);
+	DynVec<PointId> obstaclesIndexes(5, 5);
+	DynVec<TriangulationConstraint> constraints(25, 32);
+	GenerateRandomPointsAndObstacles(pointCount, obstacleCenters, obstaclesIndexes, constraints);
+
+	Triangulation triangulation;
+
+	m_controlWorkSheet->RandomTriangulation(m_points, triangulation);
+	m_controlWorkSheet->EdgeFlipping(triangulation);
+	m_controlWorkSheet->AddTriangulationConstraints(triangulation, constraints);
+
+	DynVec<Triangle> triangles(triangulation.GetTriangleCount(), 32);
+	triangulation.GetTriangles(triangles);
+	for (int i = 0; i < triangles.GetSize(); i++)
 	{
-		points.Add({ distX(rng), distY(rng) });
+		const TriangleId& triId = triangles[i].id;
+		const bool isBlocked = IsInsideObstacle(obstacleCenters, obstaclesIndexes, triangulation.GetTriangleCenter(triId));
+		triangulation.SetTriangleBlocked(triId, isBlocked);
+	}
+
+	triangulation.BuildPointConnectivity();
+
+	_DrawTriangles(triangulation, COLOR_WHITE);
+
+	const float angle = m_rotatingAngle * .1f;
+	Vector2 startPoint(cosf(angle) - 4.f, sinf(angle) - 4.f);
+	Vector2 goalPoint(cosf(angle + PI) + 4.f, sinf(angle + PI) + 4.f);
+
+	DynVec<Vector2> path(32, 32);
+	m_controlWorkSheet->AStarPathfinding(triangulation, startPoint, goalPoint, path);
+
+	// draw path
+	g_debugRender->AddWireCircle({ startPoint.x, 0.f, startPoint.y }, .25f, { 0.f, 1.f, 0.f }, COLOR_RED);
+	g_debugRender->AddWireCircle({ goalPoint.x, 0.f, goalPoint.y }, .25f, { 0.f, 1.f, 0.f }, COLOR_BLUE);
+
+	for (int i = 0; i < path.GetSize() - 1; i += 1)
+	{
+		const Vector3 p1(path[i].x, 0.f, path[i].y);
+		const Vector3 p2(path[i + 1].x, 0.f, path[i + 1].y);
+		g_debugRender->AddLine(p1, p2, COLOR_RED);
+		g_debugRender->AddWireCircle(p2, .1f, { 0.f, 1.f, 0.f }, COLOR_RED);
 	}
 }

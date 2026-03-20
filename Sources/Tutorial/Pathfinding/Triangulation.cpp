@@ -58,7 +58,7 @@ namespace Pathfinding
 			return t3Id;
 		}
 
-		return TriangleId(-1);
+		return TriangleId();
 	}
 
 	PointId Triangle::GetPointId(int p) const
@@ -76,7 +76,7 @@ namespace Pathfinding
 			return p3Id;
 		}
 
-		return PointId(-1);
+		return PointId();
 	}
 
 	void Triangle::GetOtherPoints(PointId p1Id, PointId& p1, PointId& p2) const
@@ -227,7 +227,7 @@ namespace Pathfinding
 		if (t2Idx == -1)
 		{
 			int t1hint2 = t1Hint == 3 ? 1 : t1Hint + 1;
-			triangles[t1Idx].SetNeighbourTriangle(t1Hint, t1hint2, TriangleId(-1));
+			triangles[t1Idx].SetNeighbourTriangle(t1Hint, t1hint2, TriangleId());
 			return;
 		}
 
@@ -257,7 +257,7 @@ namespace Pathfinding
 			ShowErrorMessageBox(msg);
 		}
 
-		Triangle t(TriangleId(-1), p1Id, p2Id, p3Id, TriangleId(-1), TriangleId(-1), TriangleId(-1));
+		Triangle t(TriangleId(), p1Id, p2Id, p3Id, TriangleId(), TriangleId(), TriangleId());
 
 		TriangleId tId;
 		if (emptyTriangles.GetSize() > 0)
@@ -274,6 +274,16 @@ namespace Pathfinding
 
 		triangles[tId].id = tId;
 		return tId;
+	}
+
+	void Triangulation::SetTriangleBlocked(TriangleId tId, bool blocked)
+	{
+		if (!tId.IsValid())
+		{
+			ShowErrorMessageBox(L"[Triangulation::SetTriangleBlocked] Invalid triangle id");
+			return;
+		}
+		triangles[tId].isBlocked = blocked;
 	}
 
 	void Triangulation::GetTriangleNeighbours(TriangleId tId, DynVec<TriangleNeighbourInfo>& neighbours) const
@@ -471,7 +481,7 @@ namespace Pathfinding
 			}
 		}
 
-		return TriangleId(-1);
+		return TriangleId();
 	}
 
 	bool Triangulation::CheckLineOfSight(Vector2 p1, Vector2 p2) const
@@ -484,37 +494,55 @@ namespace Pathfinding
 
 		TriangleId tri1Id = FindTriangle(p1);
 		TriangleId tri2Id = FindTriangle(p2);
+		if (!tri1Id.IsValid() || !tri2Id.IsValid())
+			return false;
 
 		TriangleId prevTriangle;
-
 		while (tri1Id != tri2Id)
 		{
+			const Triangle& tri1 = triangles[tri1Id];
+			const Triangle& tri2 = triangles[tri2Id];
+			if (LOSTrianglePath.Contains(tri1Id))
+			{
+				return false;
+			}
 			LOSTrianglePath.Add(tri1Id);
 
-			if (triangles[tri1Id].isBlocked)
+			if (tri1.isBlocked)
 			{
 				return false;
 			}
 
-			const Vector2& tp1 = points[triangles[tri1Id].p1Id];
-			const Vector2& tp2 = points[triangles[tri1Id].p2Id];
-			const Vector2& tp3 = points[triangles[tri1Id].p3Id];
+			const Vector2& tp1 = points[tri1.p1Id];
+			const Vector2& tp2 = points[tri1.p2Id];
+			const Vector2& tp3 = points[tri1.p3Id];
 
 			Vector2 inter;
-			if (FindSegmentIntersection(p1, p2, tp1, tp2, inter) && triangles[tri1Id].t1Id != prevTriangle)
+			if (FindSegmentIntersection(p1, p2, tp1, tp2, inter) && tri1.t1Id != prevTriangle)
 			{
 				prevTriangle = tri1Id;
-				tri1Id = triangles[tri1Id].t1Id;
+				tri1Id = tri1.t1Id;
 			}
-			else if (FindSegmentIntersection(p1, p2, tp2, tp3, inter) && triangles[tri1Id].t2Id != prevTriangle)
+			else if (FindSegmentIntersection(p1, p2, tp2, tp3, inter) && tri1.t2Id != prevTriangle)
 			{
 				prevTriangle = tri1Id;
-				tri1Id = triangles[tri1Id].t2Id;
+				tri1Id = tri1.t2Id;
 			}
-			else if (FindSegmentIntersection(p1, p2, tp3, tp1, inter) && triangles[tri1Id].t3Id != prevTriangle)
+			else if (FindSegmentIntersection(p1, p2, tp3, tp1, inter) && tri1.t3Id != prevTriangle)
 			{
 				prevTriangle = tri1Id;
-				tri1Id = triangles[tri1Id].t3Id;
+				tri1Id = tri1.t3Id;
+			}
+			else if (tri1.t1Id == tri2Id || tri1.t2Id == tri2Id || tri1.t3Id == tri2Id)
+			{
+				// We should be able to reach the last triangle
+				prevTriangle = tri1Id;
+				tri1Id = tri2Id;
+			}
+
+			if (!prevTriangle.IsValid())
+			{
+				return false;
 			}
 
 			if (LOSTrianglePath.GetSize() > 1000)
