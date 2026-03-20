@@ -158,6 +158,16 @@ public:
         return -1;
     }
 
+	bool Contains(const T& value) const
+	{
+		for (int i = 0; i < m_cursor; i++)
+		{
+			if (m_vec[i] == value)
+				return true;
+		}
+		return false;
+	}
+
     T *GetLast( )
     {
         if( m_cursor )

@@ -19,6 +19,8 @@ namespace Pathfinding
 		int y;
 
 		Cell(int x, int y) : x(x), y(y) {}
+
+		bool operator==(const Cell& o) const { return x == o.x && y == o.y; }
 	};
 
 	class PathfindingWorkSheet

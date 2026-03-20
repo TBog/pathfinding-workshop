@@ -56,31 +56,14 @@ void PathfindingWorkshopManager::Destroy()
 
 void PathfindingWorkshopManager::Update(float dt)
 {
-	switch (m_selectedExercise)
+	// call the function corresponding to the current exercise
+	const int exerciseIndex = static_cast<int>(m_selectedExercise);
+	if (exerciseIndex >= 0 && exerciseIndex < static_cast<int>(std::size(EXERCISE_FUNCS))) {
+		(this->*EXERCISE_FUNCS[exerciseIndex])();
+	}
+	else
 	{
-	case Exercise::SignedArea:
-		_RunSignedAreaExercise();
-		break;
-	case Exercise::InsideTriangle:
-		_RunInsideTriangleExercise();
-		break;
-	case Exercise::InsideTriangleCircumcircle:
-		_RunInsideTriangleCircumcircleExercise();
-		break;
-	case Exercise::ConvexHull:
-		_RunConvexHullExercise();
-		break;
-	case Exercise::RandomTriangulation:
-		_RunRandomTriangulationExercise();
-		break;
-	case Exercise::DelaunayTriangulation:
-		_RunDelaunayTriangulationExercise();
-		break;
-	case Exercise::ConstrainedDelaunay:
-		_RunConstrainedDelaunayExercise();
-		break;
-	default:
-		break;
+		myAssert(false, L"Invalid exercise index");
 	}
 
 	m_userWorkSheet->Update(dt);
@@ -388,7 +371,7 @@ void PathfindingWorkshopManager::_RunConvexHullExercise()
 		const Vector3 p(points[i].x, 0.f, points[i].y);
 		g_debugRender->AddIcosahedron(p, .05f, COLOR_WHITE);
 	}
-	
+
 	_DrawConvexHull(points, userHull, COLOR_YELLOW);
 	_DrawConvexHull(points, controlHull, WithAlpha(COLOR_WHITE, 0.5f), .05f);
 }
@@ -484,7 +467,7 @@ void PathfindingWorkshopManager::_RunRandomTriangulationExercise()
 		wireColor = COLOR_WHITE;
 		m_controlWorkSheet->RandomTriangulation(points, triangulation);
 	}
-	
+
 	_DrawTriangles(triangulation, wireColor, WithAlpha(COLOR_BLACK, .25f));
 }
 
@@ -551,7 +534,7 @@ void PathfindingWorkshopManager::_RunDelaunayTriangulationExercise()
 		//swprintf_s(msg, ARRAYSIZE(msg), L"max iterations: %d\ntriangleId: %d", iterations, triangleId);
 		//g_debugRender->AddText(0, 40, msg, COLOR_WHITE, COLOR_BLACK);
 	}
-	
+
 	_DrawTriangles(triangulation, wireColor, WithAlpha(COLOR_BLACK, .25f));
 	//_DrawTriangles(triangulation, wireColor);
 	//_DrawTriangleNeighbors(triangulation, triangleId, COLOR_GREEN, COLOR_YELLOW);
@@ -559,7 +542,7 @@ void PathfindingWorkshopManager::_RunDelaunayTriangulationExercise()
 
 void PathfindingWorkshopManager::_RunConstrainedDelaunayExercise()
 {
-	std::mt19937 rng(1337); // Fixed seed for reproducibility
+	std::mt19937 rng(m_randomSeed);
 	std::uniform_real_distribution<float> distX(-4.9f, 4.9f);
 	std::uniform_real_distribution<float> distY(-4.9f, 4.9f);
 
@@ -571,11 +554,7 @@ void PathfindingWorkshopManager::_RunConstrainedDelaunayExercise()
 	points.Add({ 5.f, 5.f });
 	for (int i = 0; i < pointCount; i++)
 	{
-		//float angle = /*m_rotatingAngle*/ + (float)i / (float)pointCount * 2.f * (float)D3DX_PI;
-		//float radius = 2.f + cosf(angle * 3.f) * .5f;
-		//points.Add(Vector2(cosf(angle), sinf(angle)) * radius + Vector2(2.5f, 2.5f));
-
-		points.Add({distX(rng), distY(rng)});
+		points.Add({ distX(rng), distY(rng) });
 	}
 
 	const int obstacleCount = 1;
@@ -641,4 +620,177 @@ void PathfindingWorkshopManager::_RunConstrainedDelaunayExercise()
 	}
 
 	_DrawTriangles(triangulation, wireColor, WithAlpha(COLOR_BLACK, .25f));
+}
+
+bool GenerateMaze(const Cell& crt, const Cell& goal, Grid2D<int>& vis, DynVec<Cell>& path, std::mt19937& rng)
+{
+	constexpr int dx[] = { -1, 1, 0, 0 };
+	constexpr int dy[] = { 0, 0, -1, 1 };
+	path.Add(crt);
+	if (crt.x == goal.x && crt.y == goal.y)
+	{
+		return true;
+	}
+
+	vis[crt.x][crt.y] = 1;
+
+	std::uniform_int_distribution<int> distribution(0, 3);
+	int offset = distribution(rng);
+
+	for (int i = 0; i < 4; i++)
+	{
+		int idx = (i + offset) % 4;
+		Cell newCell(crt.x + dx[idx], crt.y + dy[idx]);
+		if (newCell.x < 0 || newCell.x >= static_cast<int>(vis.GetRowCount()) || newCell.y < 0 || newCell.y >= static_cast<int>(vis.GetColCount()))
+		{
+			continue;
+		}
+
+		if (vis[newCell.x][newCell.y] == 1)
+		{
+			continue;
+		}
+
+		if (GenerateMaze(newCell, goal, vis, path, rng))
+		{
+			return true;
+		}
+	}
+
+	path.Remove(path.GetSize() - 1);
+	return false;
+}
+
+void PathfindingWorkshopManager::_RunGridPathfindingExercise()
+{
+	static bool m_leftPressed = false;
+	static bool m_rightPressed = false;
+
+	const bool leftPressed = g_input->IsKeyPressed(VK_LEFT);
+	const bool rightPressed = g_input->IsKeyPressed(VK_RIGHT);
+	const bool leftJustPressed = !m_leftPressed && leftPressed;
+	const bool rightJustPressed = !m_rightPressed && rightPressed;
+
+	m_leftPressed = leftPressed;
+	m_rightPressed = rightPressed;
+
+	if (leftJustPressed)
+		m_randomSeed -= 1;
+	if (rightJustPressed)
+		m_randomSeed += 1;
+
+	WCHAR msg[64];
+	swprintf_s(msg, ARRAYSIZE(msg), L"seed: %u", m_randomSeed);
+	g_debugRender->AddText(0, 40, msg, COLOR_WHITE, COLOR_BLACK);
+
+	std::mt19937 rng(m_randomSeed);
+	std::uniform_real_distribution<float> distX(-4.9f, 4.9f);
+	std::uniform_real_distribution<float> distY(-4.9f, 4.9f);
+
+	const int size = 10;
+	DynVec<Vector2> points(32, 32);
+	DynVec<int> lineIndexes(32, 32);
+
+	for (int i = 0; i < size + 1; i++)
+	{
+		for (int j = 0; j < size + 1; j++)
+		{
+			points.Add(Vector2(i - size / 2 - 0.5f, j - size / 2 - 0.5f));
+
+			int cnt = i * (size + 1) + j;
+			if (i < size)
+			{
+				lineIndexes.Add(cnt);
+				lineIndexes.Add(cnt + size + 1);
+			}
+
+			if (j < size)
+			{
+				lineIndexes.Add(cnt);
+				lineIndexes.Add(cnt + 1);
+			}
+		}
+	}
+
+	for (int i = 0; i < lineIndexes.GetSize(); i += 2)
+	{
+		int idx1 = lineIndexes[i];
+		int idx2 = lineIndexes[i + 1];
+		const Vector3 p1(points[idx1].x, 0.f, points[idx1].y);
+		const Vector3 p2(points[idx2].x, 0.f, points[idx2].y);
+		g_debugRender->AddLine(p1, p2, COLOR_GREEN);
+	}
+
+	Cell start(2, 3);
+	Cell goal(7, 8);
+	Grid2D<int> map(size, size);
+	DynVec<Cell> maze(32, 32);
+
+	GenerateMaze(start, goal, map, maze, rng);
+
+	for (int i = 0; i < size; i++)
+	{
+		for (int j = 0; j < size; j++)
+		{
+			map[i][j] = 0;
+			if (!maze.Contains(Cell(i, j)))
+			{
+				map[i][j] = 1;
+			}
+		}
+	}
+
+	DynVec<Cell> gridPath(32, 32);
+	m_userWorkSheet->GridPathfinding(map, start, goal, gridPath);
+	if (gridPath.GetSize() == 0)
+	{
+		m_controlWorkSheet->GridPathfinding(map, start, goal, gridPath);
+	}
+
+	g_debugRender->AddCircle({ start.x - size * .5f, 0.f, start.y - size *.5f }, .25f, { 0.f, 1.f, 0.f }, COLOR_RED);
+	g_debugRender->AddCircle({ goal.x - size * .5f, 0.f, goal.y - size *.5f }, .25f, { 0.f, 1.f, 0.f }, COLOR_BLUE);
+
+	for (int i = 0; i < gridPath.GetSize() - 1; i++)
+	{
+		const Vector3 p1(gridPath[i].x - size / 2.f, 0.f, gridPath[i].y - size / 2.f);
+		const Vector3 p2(gridPath[i + 1].x - size / 2.f, 0.f, gridPath[i + 1].y - size / 2.f);
+		g_debugRender->AddLine(p1, p2, COLOR_CYAN);
+		g_debugRender->AddWireCircle(p2, .1f, { 0.f, 1.f, 0.f }, COLOR_CYAN);
+	}
+
+	for (int x = 0; x < size; x++)
+	{
+		for (int y = 0; y < size; y++)
+		{
+			if (!maze.Contains(Cell(x, y)))
+			{
+				const Vector3 center(x - size / 2.f, 0.f, y - size / 2.f);
+				const Vector3 p1 = center + Vector3(0.4f, 0.f, 0.4f);
+				const Vector3 p2 = center + Vector3(0.4f, 0.f, -0.4f);
+				const Vector3 p3 = center + Vector3(-0.4f, 0.f, 0.4f);
+				const Vector3 p4 = center + Vector3(-0.4f, 0.f, -0.4f);
+
+				g_debugRender->AddTriangle(p1, p2, p3, WithAlpha(COLOR_BLACK, .75f));
+				g_debugRender->AddTriangle(p2, p3, p4, WithAlpha(COLOR_BLACK, .75f));
+			}
+		}
+	}
+}
+
+void PathfindingWorkshopManager::_RunAStarPathfindingExercise()
+{
+	std::mt19937 rng(m_randomSeed);
+	std::uniform_real_distribution<float> distX(-4.9f, 4.9f);
+	std::uniform_real_distribution<float> distY(-4.9f, 4.9f);
+
+	const int pointCount = 28;
+	DynVec<Vector2> points(32, 32);
+	points.Add({ -5.f, -5.f });
+	points.Add({ -5.f, 5.f });
+	points.Add({ 5.f, -5.f });
+	points.Add({ 5.f, 5.f });
+	for (int i = 0; i < pointCount; i++)
+	{
+		points.Add({ distX(rng), distY(rng) });
+	}
 }

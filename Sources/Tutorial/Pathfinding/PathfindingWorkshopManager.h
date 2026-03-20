@@ -45,6 +45,8 @@ protected:
 	void _RunRandomTriangulationExercise();
 	void _RunDelaunayTriangulationExercise();
 	void _RunConstrainedDelaunayExercise();
+	void _RunGridPathfindingExercise();
+	void _RunAStarPathfindingExercise();
 
 	static PathfindingWorkshopManager* s_Instance;
 	enum class Exercise
@@ -60,6 +62,18 @@ protected:
 		AStarPathfinding,
 		_Count
 	};
+	using ExerciseFunc = void (PathfindingWorkshopManager::*)();
+	static constexpr ExerciseFunc EXERCISE_FUNCS[] = {
+		&PathfindingWorkshopManager::_RunSignedAreaExercise,
+		&PathfindingWorkshopManager::_RunInsideTriangleExercise,
+		&PathfindingWorkshopManager::_RunInsideTriangleCircumcircleExercise,
+		&PathfindingWorkshopManager::_RunConvexHullExercise,
+		&PathfindingWorkshopManager::_RunRandomTriangulationExercise,
+		&PathfindingWorkshopManager::_RunDelaunayTriangulationExercise,
+		&PathfindingWorkshopManager::_RunConstrainedDelaunayExercise,
+		&PathfindingWorkshopManager::_RunGridPathfindingExercise,
+		&PathfindingWorkshopManager::_RunAStarPathfindingExercise
+	};
 	const wchar_t* MENU_ITEMS_EXERCISES[static_cast<int>(Exercise::_Count)] = {
 		L"SignedArea",
 		L"InsideTriangle",
@@ -72,7 +86,7 @@ protected:
 		L"AStarPathfinding",
 	};
 
-
+	unsigned int m_randomSeed{ 1337 };
 	float m_rotatingAngle{ 0.f };
 	bool m_upPressed{ false };
 	bool m_downPressed{ false };

@@ -103,6 +103,14 @@ namespace Pathfinding
 			return m_data[row];
 		}
 
+		void Fill(const T& value)
+		{
+			for (size_t row = 0; row < m_rows; ++row)
+			{
+				std::fill(m_data[row].begin(), m_data[row].end(), value);
+			}
+		}
+
 		size_t GetRowCount() const { return m_rows; }
 		size_t GetColCount() const { return m_cols; }
 

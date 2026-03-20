@@ -22,6 +22,12 @@ namespace Pathfinding
 			}
 		};
 
+		struct QueueEntry {
+			Cell cell;
+			int parent;
+			QueueEntry(const Cell& c, int p) : cell(c), parent(p) {}
+		};
+
 	public:
 		//---------------------------------------------------------------
 		// Solution
@@ -76,7 +82,7 @@ namespace Pathfinding
 			}
 		}
 
-		void ConvexHull(const DynVec<Vector2>& points, DynVec<PointId>& outHull)
+		void ConvexHull(const DynVec<Vector2>& points, DynVec<PointId>& outHull) override
 		{
 			const int n = points.GetSize();
 			if (n < 3) return;
@@ -117,7 +123,7 @@ namespace Pathfinding
 				outHull.Add(hull[i].idx);
 		}
 
-		void RandomTriangulation(const DynVec<Vector2>& points, Triangulation& triangulation)
+		void RandomTriangulation(const DynVec<Vector2>& points, Triangulation& triangulation) override
 		{
 			// Add all points to triangulation
 			for (int i = 0; i < points.GetSize(); ++i)
@@ -203,7 +209,7 @@ namespace Pathfinding
 			}
 		}
 
-		void EdgeFlipping(Triangulation& triangulation, size_t maxIterations)
+		void EdgeFlipping(Triangulation& triangulation, size_t maxIterations) override
 		{
 			bool swapped = true;
 			size_t iterations = 0;
@@ -311,7 +317,7 @@ namespace Pathfinding
 			return false;
 		}
 
-		void AddTriangulationConstraint(Triangulation& triangulation, const TriangulationConstraint& constraint)
+		void AddTriangulationConstraint(Triangulation& triangulation, const TriangulationConstraint& constraint) override
 		{
 			PointId p1Id = constraint.p1;
 			PointId p2Id = constraint.p2;
@@ -378,15 +384,61 @@ namespace Pathfinding
 			}
 		}
 
-		void GridPathfinding(const Grid2D<int>& map, const Cell& start, const Cell& goal, DynVec<Cell>& outPath)
+		void GridPathfinding(const Grid2D<int>& map, const Cell& start, const Cell& goal, DynVec<Cell>& outPath) override
+		{
+			outPath.Clear();
+
+			std::vector<QueueEntry> queue;
+			Grid2D<int> visited(map.GetRowCount(), map.GetColCount());
+			visited.Fill(0);
+			visited[start.x][start.y] = 1;
+
+			static const int dx[4] = { 0, 1, 0, -1 };
+			static const int dy[4] = { 1, 0, -1, 0 };
+
+			queue.emplace_back(start, -1);
+
+			for (size_t i = 0; i < queue.size(); ++i)
+			{
+				const Cell& cell = queue[i].cell;
+				for (int k = 0; k < 4; ++k)
+				{
+					int x = cell.x + dx[k];
+					int y = cell.y + dy[k];
+
+					if (x >= 0 && y >= 0 && static_cast<size_t>(x) < map.GetRowCount() && static_cast<size_t>(y) < map.GetColCount() && visited[x][y] == 0 && map[x][y] == 0)
+					{
+						g_debugRender->AddCircle({ x - map.GetRowCount() * .5f, 0.1f, y - map.GetColCount() * .5f }, .1f, { 0.f, 1.f, 0.f }, COLOR_WHITE);
+						visited[x][y] = 1;
+						Cell newCell(x, y);
+						queue.emplace_back(newCell, static_cast<int>(i));
+
+						if (newCell == goal)
+						{
+							// Reconstruct path
+							outPath.Add(newCell);
+							int idx = static_cast<int>(i);
+							while (idx >= 0)
+							{
+								outPath.Add(queue[idx].cell);
+								idx = queue[idx].parent;
+							}
+							// Reverse path
+							for (int l = 0, r = outPath.GetSize() - 1; l < r; ++l, --r)
+								std::swap(outPath[l], outPath[r]);
+							return;
+						}
+					}
+				}
+			}
+			// No path found, outPath remains empty
+		}
+
+		void AStarPathfinding(const Triangulation& triangulation, const Vector2& startPoint, const Vector2& goalPoint, DynVec<Vector2>& outPath) override
 		{
 		}
 
-		void AStarPathfinding(const Triangulation& triangulation, const Vector2& startPoint, const Vector2& goalPoint, DynVec<Vector2>& outPath)
-		{
-		}
-
-		void SmoothPath(const Triangulation& triangulation, const DynVec<Vector2>& path, DynVec<Vector2>& outPath)
+		void SmoothPath(const Triangulation& triangulation, const DynVec<Vector2>& path, DynVec<Vector2>& outPath) override
 		{
 		}
 	};
