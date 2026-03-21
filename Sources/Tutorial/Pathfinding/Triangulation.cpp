@@ -501,7 +501,6 @@ namespace Pathfinding
 		while (tri1Id != tri2Id)
 		{
 			const Triangle& tri1 = triangles[tri1Id];
-			const Triangle& tri2 = triangles[tri2Id];
 			if (LOSTrianglePath.Contains(tri1Id))
 			{
 				return false;
@@ -533,11 +532,38 @@ namespace Pathfinding
 				prevTriangle = tri1Id;
 				tri1Id = tri1.t3Id;
 			}
-			else if (tri1.t1Id == tri2Id || tri1.t2Id == tri2Id || tri1.t3Id == tri2Id)
+			else
 			{
-				// We should be able to reach the last triangle
-				prevTriangle = tri1Id;
-				tri1Id = tri2Id;
+				// Fallback: FindSegmentIntersection uses strict inequality and can miss
+				// intersections when the LOS passes very close to a triangle vertex.
+				// Use the signed area test which handles near-endpoint intersections.
+				// Only advance when exactly one edge matches to stay conservative
+				// and avoid false positives (reporting clear LOS through blocked areas).
+				TriangleId candidateNeighbor;
+				int matchingEdgeCount = 0;
+
+				const Vector2* edgeStart[3] = { &tp1, &tp2, &tp3 };
+				const Vector2* edgeEnd[3]   = { &tp2, &tp3, &tp1 };
+				const TriangleId neighbors[3] = { tri1.t1Id, tri1.t2Id, tri1.t3Id };
+
+				for (int i = 0; i < 3; ++i)
+				{
+					if (!neighbors[i].IsValid() || neighbors[i] == prevTriangle)
+						continue;
+					const float sa1 = SignedArea(*edgeStart[i], *edgeEnd[i], p1);
+					const float sa2 = SignedArea(*edgeStart[i], *edgeEnd[i], p2);
+					if (sa1 * sa2 < 0.0f)
+					{
+						++matchingEdgeCount;
+						candidateNeighbor = neighbors[i];
+					}
+				}
+
+				if (matchingEdgeCount == 1)
+				{
+					prevTriangle = tri1Id;
+					tri1Id = candidateNeighbor;
+				}
 			}
 
 			if (!prevTriangle.IsValid())
