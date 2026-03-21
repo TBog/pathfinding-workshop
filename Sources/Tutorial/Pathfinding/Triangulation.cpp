@@ -403,7 +403,14 @@ namespace Pathfinding
 
 	bool Triangulation::FlipTrianglesEdge(TriangleId t1Id, TriangleId t2Id)
 	{
-		const TriangleNeighbourInfo& info = GetTriangleNeighbouringInfo(t1Id, t2Id);
+		const TriangleNeighbourInfo info = GetTriangleNeighbouringInfo(t1Id, t2Id);
+
+		// Only flip if the quadrilateral formed by the two triangles is convex.
+		// p2 (cp1) and p3 (cp2) must be on opposite sides of the line p1-p4 (t1op-t2op).
+		const float sa = SignedArea(points[info.p1Id], points[info.p4Id], points[info.p2Id]);
+		const float sb = SignedArea(points[info.p1Id], points[info.p4Id], points[info.p3Id]);
+		if (sa * sb >= 0.f)
+			return;
 
 		// Only flip if the quadrilateral formed by the two triangles is convex.
 		// p2 (cp1) and p3 (cp2) must be on opposite sides of the line p1-p4 (t1op-t2op).
