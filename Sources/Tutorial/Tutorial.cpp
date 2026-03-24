@@ -162,6 +162,35 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		EndPaint(hWnd, &ps);
 	}
 	break;
+	case WM_SIZE:
+	{
+		if (wParam != SIZE_MINIMIZED && g_renderManager && g_renderManager->GetDevice())
+		{
+			int newWidth = LOWORD(lParam);
+			int newHeight = HIWORD(lParam);
+			if (newWidth > 0 && newHeight > 0 &&
+				(newWidth != g_resolutionWidth || newHeight != g_resolutionHeight))
+			{
+				g_resolutionWidth = newWidth;
+				g_resolutionHeight = newHeight;
+
+				g_renderManager->ResizeSwapChain(newWidth, newHeight);
+
+				SAFE_RELEASE(g_HDRRenderTarget);
+				SAFE_RELEASE(g_depthBuffer);
+				g_HDRRenderTarget = new Texture(g_resolutionWidth, g_resolutionHeight, DXGI_FORMAT_R16G16B16A16_FLOAT, false, eTextureType_RenderTarget);
+				g_depthBuffer = new Texture(g_resolutionWidth, g_resolutionHeight, DXGI_FORMAT_D24_UNORM_S8_UINT, false, eTextureType_DepthStencil);
+
+				g_debugRender->DestroyResources();
+				g_debugRender->CreateResources();
+
+				float fov = (float)D3DX_PI / 4;
+				float aspectRatio = (float)g_resolutionWidth / (float)g_resolutionHeight;
+				g_renderManager->GetCamera()->SetProjParams(fov, aspectRatio, 0.1f, 5000.f);
+			}
+		}
+		break;
+	}
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		break;
