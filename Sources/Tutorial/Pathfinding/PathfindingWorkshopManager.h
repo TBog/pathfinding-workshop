@@ -51,6 +51,7 @@ protected:
 	void _RunConstrainedDelaunayExercise();
 	void _RunGridPathfindingExercise();
 	void _RunAStarPathfindingExercise();
+	void _RunAStarPathfindingSmoothExercise();
 
 	static PathfindingWorkshopManager* s_Instance;
 	enum class Exercise
@@ -64,30 +65,33 @@ protected:
 		ConstrainedDelaunay,
 		GridPathfinding,
 		AStarPathfinding,
+		AStarPathfindingSmooth,
 		_Count
 	};
+
 	using ExerciseFunc = void (PathfindingWorkshopManager::*)();
-	static constexpr ExerciseFunc EXERCISE_FUNCS[] = {
-		&PathfindingWorkshopManager::_RunSignedAreaExercise,
-		&PathfindingWorkshopManager::_RunInsideTriangleExercise,
-		&PathfindingWorkshopManager::_RunInsideTriangleCircumcircleExercise,
-		&PathfindingWorkshopManager::_RunConvexHullExercise,
-		&PathfindingWorkshopManager::_RunRandomTriangulationExercise,
-		&PathfindingWorkshopManager::_RunDelaunayTriangulationExercise,
-		&PathfindingWorkshopManager::_RunConstrainedDelaunayExercise,
-		&PathfindingWorkshopManager::_RunGridPathfindingExercise,
-		&PathfindingWorkshopManager::_RunAStarPathfindingExercise
+
+	struct MenuItem
+	{
+		const wchar_t* name;
+		const int subItemCount;
+		int subItem{ 0 };
+		ExerciseFunc func;
+
+		MenuItem(const wchar_t* name, int subItemCount, ExerciseFunc func) : name(name), subItemCount(subItemCount), func(func) {};
 	};
-	const wchar_t* MENU_ITEMS_EXERCISES[static_cast<int>(Exercise::_Count)] = {
-		L"SignedArea",
-		L"InsideTriangle",
-		L"InsideTriangleCircumcircle",
-		L"ConvexHull",
-		L"RandomTriangulation",
-		L"DelaunayTriangulation",
-		L"ConstrainedDelaunay",
-		L"GridPathfinding",
-		L"AStarPathfinding",
+
+	MenuItem MENU_ITEMS_EXERCISES[static_cast<int>(Exercise::_Count)] = {
+		{L"Signed Area", 0, &PathfindingWorkshopManager::_RunSignedAreaExercise},
+		{L"Inside Triangle", 0, &PathfindingWorkshopManager::_RunInsideTriangleExercise},
+		{L"Inside Triangle Circumcircle", 0, &PathfindingWorkshopManager::_RunInsideTriangleCircumcircleExercise},
+		{L"Convex Hull", 0, &PathfindingWorkshopManager::_RunConvexHullExercise},
+		{L"Random Triangulation", 0, &PathfindingWorkshopManager::_RunRandomTriangulationExercise},
+		{L"Delaunay Triangulation", 0, &PathfindingWorkshopManager::_RunDelaunayTriangulationExercise},
+		{L"Constrained Delaunay", 0, &PathfindingWorkshopManager::_RunConstrainedDelaunayExercise},
+		{L"Grid Pathfinding", 2, &PathfindingWorkshopManager::_RunGridPathfindingExercise},
+		{L"A* Pathfinding", 2, &PathfindingWorkshopManager::_RunAStarPathfindingExercise},
+		{L"A* Pathfinding Smooth", 2, &PathfindingWorkshopManager::_RunAStarPathfindingSmoothExercise},
 	};
 
 	void GenerateRandomPointsAndObstacles(int pointCount, DynVec<Pathfinding::Vector2>& obstacleCenters, DynVec<Pathfinding::PointId>& obstaclesIndexes, DynVec<Pathfinding::TriangulationConstraint>& constraints);
@@ -95,13 +99,17 @@ protected:
 
 	unsigned int m_randomSeed{ 1337 };
 	float m_rotatingAngle{ 0.f };
+	bool m_rotationEnabled{ true };
+
 	bool m_upPressed{ false };
 	bool m_downPressed{ false };
 	bool m_leftPressed{ false };
 	bool m_rightPressed{ false };
 	bool m_acceptPressed{ false };
 	bool m_showDebugMenu{ false };
+	bool m_pausePressed{ false };
 	int m_menuItem{ 0 };
+	int GetSelectedMenuSubItem() const;
 	Exercise m_selectedExercise;
 	Pathfinding::PathfindingWorkSheet* m_userWorkSheet{ nullptr };
 	Pathfinding::PathfindingWorkSheet* m_controlWorkSheet{ nullptr };

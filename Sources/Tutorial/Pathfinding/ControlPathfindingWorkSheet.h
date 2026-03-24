@@ -655,6 +655,38 @@ namespace Pathfinding
 
 		void SmoothPath(const Triangulation& triangulation, const DynVec<Vector2>& path, DynVec<Vector2>& outPath) override
 		{
+			outPath.Clear();
+			if (path.GetSize() == 0) 
+				return;
+			
+			int lastAddedIdx = 0;
+			outPath.Add(path[0]);
+			for (int i = 1; i < path.GetSize(); ++i)
+			{
+				if (!triangulation.CheckLineOfSight(path[lastAddedIdx], path[i]))
+				{
+					outPath.Add(path[i - 1]);
+					lastAddedIdx = i - 1;
+				}
+			}
+			if (lastAddedIdx != path.GetSize() - 1)
+				outPath.Add(path[path.GetSize() - 1]);
+			// check outPath in reverse order for additional smoothing by removing unnecessary waypoints
+			{
+				int i = outPath.GetSize() - 2;
+				while (i > 0 && i < (outPath.GetSize() - 1))
+				{
+					// If we can go directly from the previous to the next, remove the current
+					if (triangulation.CheckLineOfSight(outPath[i - 1], outPath[i + 1]))
+					{
+						outPath.RemoveKeepOrder(i);
+					}
+					else
+					{
+						--i;
+					}
+				}
+			}
 		}
 	};
 

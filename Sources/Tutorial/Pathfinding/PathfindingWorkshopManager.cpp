@@ -55,12 +55,27 @@ void PathfindingWorkshopManager::Destroy()
 
 //-------------------------------------------------------------------
 
+int PathfindingWorkshopManager::GetSelectedMenuSubItem() const
+{
+	const int exerciseIndex = static_cast<int>(m_selectedExercise);
+	if (exerciseIndex >= 0 && exerciseIndex < static_cast<int>(std::size(MENU_ITEMS_EXERCISES))) {
+		return MENU_ITEMS_EXERCISES[exerciseIndex].subItem;
+	}
+	else
+	{
+		myAssert(false, L"Invalid exercise index");
+		return 0;
+	}
+}
+
+//-------------------------------------------------------------------
+
 void PathfindingWorkshopManager::Update(float dt)
 {
 	// call the function corresponding to the current exercise
 	const int exerciseIndex = static_cast<int>(m_selectedExercise);
-	if (exerciseIndex >= 0 && exerciseIndex < static_cast<int>(std::size(EXERCISE_FUNCS))) {
-		(this->*EXERCISE_FUNCS[exerciseIndex])();
+	if (exerciseIndex >= 0 && exerciseIndex < static_cast<int>(std::size(MENU_ITEMS_EXERCISES))) {
+		(this->*MENU_ITEMS_EXERCISES[exerciseIndex].func)();
 	}
 	else
 	{
@@ -70,7 +85,16 @@ void PathfindingWorkshopManager::Update(float dt)
 	m_userWorkSheet->Update(dt);
 	m_controlWorkSheet->Update(dt);
 
-	if (!g_input->IsKeyPressed(VK_SPACE))
+	const bool pausePressed = g_input->IsKeyPressed(VK_SPACE);
+	const bool pauseJustPressed = !m_pausePressed && pausePressed;
+	m_pausePressed = pausePressed;
+
+	if (pauseJustPressed)
+	{
+		m_rotationEnabled = !m_rotationEnabled;
+	}
+
+	if (m_rotationEnabled)
 	{
 		m_rotatingAngle += dt * .5f;
 	}
@@ -84,30 +108,35 @@ void PathfindingWorkshopManager::Update(float dt)
 	{
 		const bool upPressed = g_input->IsKeyPressed(VK_UP);
 		const bool downPressed = g_input->IsKeyPressed(VK_DOWN);
+		const bool leftPressed = g_input->IsKeyPressed(VK_LEFT);
+		const bool rightPressed = g_input->IsKeyPressed(VK_RIGHT);
 		const bool acceptPressed = g_input->IsKeyPressed(VK_RETURN);
 		const bool upJustPressed = !m_upPressed && upPressed;
 		const bool downJustPressed = !m_downPressed && downPressed;
+		const bool leftJustPressed = !m_leftPressed && leftPressed;
+		const bool rightJustPressed = !m_rightPressed && rightPressed;
 		const bool acceptJustPressed = !m_acceptPressed && acceptPressed;
 
 		m_upPressed = upPressed;
 		m_downPressed = downPressed;
+		m_leftPressed = leftPressed;
+		m_rightPressed = rightPressed;
 		m_acceptPressed = acceptPressed;
 
-		if (upJustPressed)
-		{
-			m_menuItem -= 1;
-		}
-		if (downJustPressed)
-		{
-			m_menuItem += 1;
-		}
+		m_menuItem += upJustPressed ? -1 : (downJustPressed ? 1 : 0);
+		m_menuItem = (m_menuItem + static_cast<int>(Exercise::_Count)) % static_cast<int>(Exercise::_Count);
+
+		int& menuSubItem = MENU_ITEMS_EXERCISES[m_menuItem].subItem;
+		menuSubItem += leftJustPressed ? -1 : (rightJustPressed ? 1 : 0);
+
+		const int subItemCount = MENU_ITEMS_EXERCISES[m_menuItem].subItemCount;
+		menuSubItem = subItemCount > 0 ? ((menuSubItem + subItemCount) % subItemCount) : 0;
+
 		if (acceptJustPressed)
 		{
 			m_selectedExercise = static_cast<Exercise>(m_menuItem);
 			m_showDebugMenu = false;
 		}
-
-		m_menuItem = (m_menuItem + static_cast<int>(Exercise::_Count)) % static_cast<int>(Exercise::_Count);
 
 		_DrawDebugMenu();
 	}
@@ -119,7 +148,7 @@ void PathfindingWorkshopManager::Update(float dt)
 		}
 
 		const int menuItem = static_cast<int>(m_selectedExercise);
-		g_debugRender->AddText(10, 10, MENU_ITEMS_EXERCISES[menuItem], COLOR_YELLOW, WithAlpha(COLOR_BLACK, .5f));
+		g_debugRender->AddText(10, 10, MENU_ITEMS_EXERCISES[menuItem].name, COLOR_YELLOW, WithAlpha(COLOR_BLACK, .5f));
 	}
 }
 
@@ -133,8 +162,48 @@ void PathfindingWorkshopManager::_DrawDebugMenu()
 	for (int i = 0; i < ARRAYSIZE(MENU_ITEMS_EXERCISES); i++)
 	{
 		const bool isSelected = i == static_cast<int>(m_selectedExercise);
-		WCHAR msg[32];
-		swprintf_s(msg, ARRAYSIZE(msg), L"[%lc] %s", isSelected ? L'\u2713' : L' ', MENU_ITEMS_EXERCISES[i]);
+		WCHAR subItems[128] = {0};
+		if ((m_menuItem == i) && MENU_ITEMS_EXERCISES[i].subItemCount > 1)
+		{
+			//const wchar_t* subItemOptions[2] = { nullptr, nullptr };
+			//int subItemCount = 0;
+
+			//switch (static_cast<Exercise>(i))
+			//{
+			//case Exercise::AStarPathfinding:
+			//case Exercise::AStarPathfindingSmooth:
+			//	subItemOptions[0] = L"User";
+			//	subItemOptions[1] = L"Control";
+			//	subItemCount = 2;
+			//	break;
+			//default:
+			//	break;
+			//}
+			//myAssert(subItemCount == MENU_ITEMS_EXERCISES[i].subItemCount, L"Debug Menu subItem count mismatch");
+
+			const wchar_t* subItemOptions[2] = { L"User", L"Control" };
+			const int subItemCount = min(MENU_ITEMS_EXERCISES[i].subItemCount, ARRAYSIZE(subItemOptions));
+
+			// Build the subitem string with brackets around the selected one
+			wcscpy_s(subItems, L" \u2014 ");
+			for (int s = 0; s < subItemCount; ++s)
+			{
+				if (s > 0)
+					wcscat_s(subItems, L" | ");
+				if (s == MENU_ITEMS_EXERCISES[i].subItem)
+				{
+					wcscat_s(subItems, L"<[ ");
+					wcscat_s(subItems, subItemOptions[s]);
+					wcscat_s(subItems, L" ]>");
+				}
+				else
+				{
+					wcscat_s(subItems, subItemOptions[s]);
+				}
+			}
+		}
+		WCHAR msg[256];
+		swprintf_s(msg, ARRAYSIZE(msg), L"[%lc] %s %s", isSelected ? L'\u2713' : L' ', MENU_ITEMS_EXERCISES[i].name, subItems);
 		g_debugRender->AddText(menuX, menuY, msg, COLOR_BLACK, m_menuItem == i ? COLOR_YELLOW : COLOR_WHITE);
 		menuY += lineHeight;
 	}
@@ -380,7 +449,7 @@ void PathfindingWorkshopManager::_RunConvexHullExercise()
 void _DrawTriangles(const Triangulation& triangulation, const Color& wireColor, const Color& triangleColor = COLOR_TRANSPARENT)
 {
 	const DynVec<Vector2>& points = triangulation.GetPoints();
-	DynVec<Triangle> triangles(triangulation.GetTriangleCount(), 32);
+	DynVec<Triangle> triangles(max(32, triangulation.GetTriangleCount()), 32);
 	triangulation.GetTriangles(triangles);
 	for (int i = 0; i < triangles.GetSize(); i += 1)
 	{
@@ -543,18 +612,21 @@ void PathfindingWorkshopManager::_RunDelaunayTriangulationExercise()
 
 void PathfindingWorkshopManager::GenerateRandomPointsAndObstacles(int pointCount, DynVec<Vector2>& obstacleCenters, DynVec<PointId>& obstaclesIndexes, DynVec<Pathfinding::TriangulationConstraint>& constraints)
 {
-	const bool leftPressed = g_input->IsKeyPressed(VK_LEFT);
-	const bool rightPressed = g_input->IsKeyPressed(VK_RIGHT);
-	const bool leftJustPressed = !m_leftPressed && leftPressed;
-	const bool rightJustPressed = !m_rightPressed && rightPressed;
+	if (!m_showDebugMenu)
+	{
+		const bool leftPressed = g_input->IsKeyPressed(VK_LEFT);
+		const bool rightPressed = g_input->IsKeyPressed(VK_RIGHT);
+		const bool leftJustPressed = !m_leftPressed && leftPressed;
+		const bool rightJustPressed = !m_rightPressed && rightPressed;
 
-	m_leftPressed = leftPressed;
-	m_rightPressed = rightPressed;
+		m_leftPressed = leftPressed;
+		m_rightPressed = rightPressed;
 
-	if (leftJustPressed)
-		m_randomSeed -= 1;
-	if (rightJustPressed)
-		m_randomSeed += 1;
+		if (leftJustPressed)
+			m_randomSeed -= 1;
+		if (rightJustPressed)
+			m_randomSeed += 1;
+	}
 
 	std::mt19937 rng(m_randomSeed);
 	std::uniform_real_distribution<float> distX(-4.9f, 4.9f);
@@ -575,7 +647,7 @@ void PathfindingWorkshopManager::GenerateRandomPointsAndObstacles(int pointCount
 
 	for (int x = 0; x < obstacleCount; x++)
 	{
-		float angle = m_rotatingAngle + (float)x / (float)obstacleCount * 2.f * (float)D3DX_PI;
+		float angle = m_rotatingAngle * .2f + (float)x / (float)obstacleCount * 2.f * (float)D3DX_PI;
 		Vector2 center(cosf(angle) * 1.5f, (float)x / (float)obstacleCount * 5.f * ((x % 2) * 2 - 1));
 		obstacleCenters.Add(center);
 
@@ -682,18 +754,23 @@ bool GenerateMaze(const Cell& crt, const Cell& goal, Grid2D<int>& vis, DynVec<Ce
 
 void PathfindingWorkshopManager::_RunGridPathfindingExercise()
 {
-	const bool leftPressed = g_input->IsKeyPressed(VK_LEFT);
-	const bool rightPressed = g_input->IsKeyPressed(VK_RIGHT);
-	const bool leftJustPressed = !m_leftPressed && leftPressed;
-	const bool rightJustPressed = !m_rightPressed && rightPressed;
+	PathfindingWorkSheet* worksheet = GetSelectedMenuSubItem() == 0 ? m_userWorkSheet : m_controlWorkSheet;
 
-	m_leftPressed = leftPressed;
-	m_rightPressed = rightPressed;
+	if (!m_showDebugMenu)
+	{
+		const bool leftPressed = g_input->IsKeyPressed(VK_LEFT);
+		const bool rightPressed = g_input->IsKeyPressed(VK_RIGHT);
+		const bool leftJustPressed = !m_leftPressed && leftPressed;
+		const bool rightJustPressed = !m_rightPressed && rightPressed;
 
-	if (leftJustPressed)
-		m_randomSeed -= 1;
-	if (rightJustPressed)
-		m_randomSeed += 1;
+		m_leftPressed = leftPressed;
+		m_rightPressed = rightPressed;
+
+		if (leftJustPressed)
+			m_randomSeed -= 1;
+		if (rightJustPressed)
+			m_randomSeed += 1;
+	}
 
 	WCHAR msg[64];
 	swprintf_s(msg, ARRAYSIZE(msg), L"seed: %u", m_randomSeed);
@@ -757,11 +834,7 @@ void PathfindingWorkshopManager::_RunGridPathfindingExercise()
 	}
 
 	DynVec<Cell> gridPath(32, 32);
-	m_userWorkSheet->GridPathfinding(map, start, goal, gridPath);
-	if (gridPath.GetSize() == 0)
-	{
-		m_controlWorkSheet->GridPathfinding(map, start, goal, gridPath);
-	}
+	worksheet->GridPathfinding(map, start, goal, gridPath);
 
 	g_debugRender->AddCircle({ start.x - size * .5f, 0.f, start.y - size * .5f }, .25f, { 0.f, 1.f, 0.f }, COLOR_RED);
 	g_debugRender->AddCircle({ goal.x - size * .5f, 0.f, goal.y - size * .5f }, .25f, { 0.f, 1.f, 0.f }, COLOR_BLUE);
@@ -817,6 +890,8 @@ bool PathfindingWorkshopManager::IsInsideObstacle(DynVec<Vector2>& obstacleCente
 
 void PathfindingWorkshopManager::_RunAStarPathfindingExercise()
 {
+	PathfindingWorkSheet* worksheet = GetSelectedMenuSubItem() == 0 ? m_userWorkSheet : m_controlWorkSheet;
+
 	const int pointCount = 28;
 	m_points.Clear();
 	DynVec<Vector2> obstacleCenters(5, 5);
@@ -826,11 +901,11 @@ void PathfindingWorkshopManager::_RunAStarPathfindingExercise()
 
 	Triangulation triangulation;
 
-	m_controlWorkSheet->RandomTriangulation(m_points, triangulation);
-	m_controlWorkSheet->EdgeFlipping(triangulation);
-	m_controlWorkSheet->AddTriangulationConstraints(triangulation, constraints);
+	worksheet->RandomTriangulation(m_points, triangulation);
+	worksheet->EdgeFlipping(triangulation);
+	worksheet->AddTriangulationConstraints(triangulation, constraints);
 
-	DynVec<Triangle> triangles(triangulation.GetTriangleCount(), 32);
+	DynVec<Triangle> triangles(max(32, triangulation.GetTriangleCount()), 32);
 	triangulation.GetTriangles(triangles);
 	for (int i = 0; i < triangles.GetSize(); i++)
 	{
@@ -843,12 +918,12 @@ void PathfindingWorkshopManager::_RunAStarPathfindingExercise()
 
 	_DrawTriangles(triangulation, COLOR_WHITE);
 
-	const float angle = m_rotatingAngle * .1f;
+	const float angle = m_rotatingAngle;
 	Vector2 startPoint(cosf(angle) - 4.f, sinf(angle) - 4.f);
 	Vector2 goalPoint(cosf(angle + PI) + 4.f, sinf(angle + PI) + 4.f);
 
 	DynVec<Vector2> path(32, 32);
-	m_controlWorkSheet->AStarPathfinding(triangulation, startPoint, goalPoint, path);
+	worksheet->AStarPathfinding(triangulation, startPoint, goalPoint, path);
 
 	// draw path
 	g_debugRender->AddWireCircle({ startPoint.x, 0.f, startPoint.y }, .25f, { 0.f, 1.f, 0.f }, COLOR_RED);
@@ -860,5 +935,65 @@ void PathfindingWorkshopManager::_RunAStarPathfindingExercise()
 		const Vector3 p2(path[i + 1].x, 0.f, path[i + 1].y);
 		g_debugRender->AddLine(p1, p2, COLOR_RED);
 		g_debugRender->AddWireCircle(p2, .1f, { 0.f, 1.f, 0.f }, COLOR_RED);
+	}
+}
+
+void PathfindingWorkshopManager::_RunAStarPathfindingSmoothExercise()
+{
+	PathfindingWorkSheet* worksheet = GetSelectedMenuSubItem() == 0 ? m_userWorkSheet : m_controlWorkSheet;
+
+	const int pointCount = 28;
+	m_points.Clear();
+	DynVec<Vector2> obstacleCenters(5, 5);
+	DynVec<PointId> obstaclesIndexes(5, 5);
+	DynVec<TriangulationConstraint> constraints(25, 32);
+	GenerateRandomPointsAndObstacles(pointCount, obstacleCenters, obstaclesIndexes, constraints);
+
+	Triangulation triangulation;
+
+	worksheet->RandomTriangulation(m_points, triangulation);
+	worksheet->EdgeFlipping(triangulation);
+	worksheet->AddTriangulationConstraints(triangulation, constraints);
+
+	DynVec<Triangle> triangles(max(32, triangulation.GetTriangleCount()), 32);
+	triangulation.GetTriangles(triangles);
+	for (int i = 0; i < triangles.GetSize(); i++)
+	{
+		const TriangleId& triId = triangles[i].id;
+		const bool isBlocked = IsInsideObstacle(obstacleCenters, obstaclesIndexes, triangulation.GetTriangleCenter(triId));
+		triangulation.SetTriangleBlocked(triId, isBlocked);
+	}
+
+	triangulation.BuildPointConnectivity();
+
+	_DrawTriangles(triangulation, COLOR_WHITE);
+
+	const float angle = m_rotatingAngle;
+	Vector2 startPoint(cosf(angle) - 4.f, sinf(angle) - 4.f);
+	Vector2 goalPoint(cosf(angle - PI) + 4.f, sinf(angle + PI) + 4.f);
+
+	DynVec<Vector2> path(32, 32);
+	worksheet->AStarPathfinding(triangulation, startPoint, goalPoint, path);
+	DynVec<Vector2> smoothPath(32, 32);
+	worksheet->SmoothPath(triangulation, path, smoothPath);
+
+	// draw smoothPath
+	g_debugRender->AddWireCircle({ startPoint.x, 0.f, startPoint.y }, .25f, { 0.f, 1.f, 0.f }, COLOR_RED);
+	g_debugRender->AddWireCircle({ goalPoint.x, 0.f, goalPoint.y }, .25f, { 0.f, 1.f, 0.f }, COLOR_BLUE);
+
+	for (int i = 0; i < path.GetSize() - 1; i += 1)
+	{
+		const Vector3 p1(path[i].x, 0.f, path[i].y);
+		const Vector3 p2(path[i + 1].x, 0.f, path[i + 1].y);
+		g_debugRender->AddLine(p1, p2, COLOR_RED);
+		g_debugRender->AddWireCircle(p2, .1f, { 0.f, 1.f, 0.f }, COLOR_RED);
+	}
+
+	for (int i = 0; i < smoothPath.GetSize() - 1; i += 1)
+	{
+		const Vector3 p1(smoothPath[i].x, 0.01f, smoothPath[i].y);
+		const Vector3 p2(smoothPath[i + 1].x, 0.01f, smoothPath[i + 1].y);
+		g_debugRender->AddLine(p1, p2, COLOR_GREEN);
+		g_debugRender->AddWireCircle(p2, .1f, { 0.f, 1.f, 0.f }, COLOR_GREEN);
 	}
 }
