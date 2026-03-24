@@ -73,6 +73,8 @@ Object* g_testObj = NULL;
 static bool g_mouseLookActive = false;
 static const float MOUSE_LOOK_SENSITIVITY = 0.003f;  // radians per pixel
 
+static bool g_isResizing = false;
+
 //--------------------------------------------------------------------------------------
 // Forward declarations 
 //--------------------------------------------------------------------------------------
@@ -83,6 +85,8 @@ void DestroyApp();
 
 void Update(float dt);
 void Render(float dt);
+
+void ApplyPendingResize(int width, int height);
 
 //--------------------------------------------------------------------------------------
 // Entry point to the program. Initializes everything and goes into a message processing 
@@ -162,6 +166,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		EndPaint(hWnd, &ps);
 	}
 	break;
+	case WM_ENTERSIZEMOVE:
+		g_isResizing = true;
+		break;
 	case WM_SIZE:
 	{
 		if (wParam != SIZE_MINIMIZED && g_renderManager && g_renderManager->GetDevice())
@@ -171,22 +178,35 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if (newWidth > 0 && newHeight > 0 &&
 				(newWidth != g_resolutionWidth || newHeight != g_resolutionHeight))
 			{
-				g_resolutionWidth = newWidth;
-				g_resolutionHeight = newHeight;
-
-				g_renderManager->ResizeSwapChain(newWidth, newHeight);
-
-				SAFE_RELEASE(g_HDRRenderTarget);
-				SAFE_RELEASE(g_depthBuffer);
-				g_HDRRenderTarget = new Texture(g_resolutionWidth, g_resolutionHeight, DXGI_FORMAT_R16G16B16A16_FLOAT, false, eTextureType_RenderTarget);
-				g_depthBuffer = new Texture(g_resolutionWidth, g_resolutionHeight, DXGI_FORMAT_D24_UNORM_S8_UINT, false, eTextureType_DepthStencil);
-
-				g_debugRender->DestroyResources();
-				g_debugRender->CreateResources();
-
+				// Always update the camera projection matrix immediately so the view
+				// stays correct even while resources are still at the old resolution.
 				float fov = (float)D3DX_PI / 4;
-				float aspectRatio = (float)g_resolutionWidth / (float)g_resolutionHeight;
+				float aspectRatio = (float)newWidth / (float)newHeight;
 				g_renderManager->GetCamera()->SetProjParams(fov, aspectRatio, 0.1f, 5000.f);
+
+				if (!g_isResizing)
+				{
+					// Programmatic resize (maximize, restore, etc.): apply immediately.
+					// For interactive resize, this is deferred to WM_EXITSIZEMOVE.
+					ApplyPendingResize(newWidth, newHeight);
+				}
+			}
+		}
+		break;
+	}
+	case WM_EXITSIZEMOVE:
+	{
+		g_isResizing = false;
+		if (g_renderManager && g_renderManager->GetDevice())
+		{
+			RECT rect;
+			GetClientRect(hWnd, &rect);
+			int finalWidth = rect.right - rect.left;
+			int finalHeight = rect.bottom - rect.top;
+			if (finalWidth > 0 && finalHeight > 0 &&
+				(finalWidth != g_resolutionWidth || finalHeight != g_resolutionHeight))
+			{
+				ApplyPendingResize(finalWidth, finalHeight);
 			}
 		}
 		break;
@@ -494,6 +514,27 @@ void DeleteD3DResources()
 
 	SAFE_RELEASE(g_HDRRenderTarget);
 	SAFE_RELEASE(g_depthBuffer);
+}
+
+//--------------------------------------------------------------------------------------
+// Recreate the swap chain back buffer, HDR render target, depth buffer, and debug
+// overlay resources at the new resolution.  Call this once the user has finished
+// resizing the window (WM_EXITSIZEMOVE) or on a programmatic resize (maximize, etc.).
+//--------------------------------------------------------------------------------------
+void ApplyPendingResize(int width, int height)
+{
+	g_resolutionWidth = width;
+	g_resolutionHeight = height;
+
+	g_renderManager->ResizeSwapChain(width, height);
+
+	SAFE_RELEASE(g_HDRRenderTarget);
+	SAFE_RELEASE(g_depthBuffer);
+	g_HDRRenderTarget = new Texture(g_resolutionWidth, g_resolutionHeight, DXGI_FORMAT_R16G16B16A16_FLOAT, false, eTextureType_RenderTarget);
+	g_depthBuffer = new Texture(g_resolutionWidth, g_resolutionHeight, DXGI_FORMAT_D24_UNORM_S8_UINT, false, eTextureType_DepthStencil);
+
+	g_debugRender->DestroyResources();
+	g_debugRender->CreateResources();
 }
 
 //--------------------------------------------------------------------------------------
