@@ -564,6 +564,28 @@ void UpdateShaderReloadMonitor()
 }
 
 //--------------------------------------------------------------------------------------
+// Camera ReInitialize logic
+//--------------------------------------------------------------------------------------
+bool g_isCameraInitializeShortcutPressed = false;
+
+void UpdateCameraInitializeMonitor()
+{
+	if (g_input->IsKeyPressed(VK_SHIFT) && g_input->IsKeyPressed('R'))
+	{
+		if (!g_isCameraInitializeShortcutPressed)
+		{
+			g_isCameraInitializeShortcutPressed = true;
+
+			InitializeCamera();
+		}
+	}
+	else
+	{
+		g_isCameraInitializeShortcutPressed = false;
+	}
+}
+
+//--------------------------------------------------------------------------------------
 // Render the cube mesh
 //--------------------------------------------------------------------------------------
 void RenderCubeMesh()
@@ -633,6 +655,7 @@ void Update(float dt)
 {
 	g_input->Update();
 
+	UpdateCameraInitializeMonitor();
 	UpdateShaderReloadMonitor();
 
 	float moveAxisX = g_input->GetGamePadState(0).m_thumbLeftX;
@@ -654,12 +677,12 @@ void Update(float dt)
 		moveAxisX -= 1.f;
 	if (g_input->IsKeyPressed('D'))
 		moveAxisX += 1.f;
-	moveAxisX = __max(-1.f, __min(1.f, moveAxisX));
-	moveAxisY = __max(-1.f, __min(1.f, moveAxisY));
+	moveAxisX = max(-1.f, min(1.f, moveAxisX));
+	moveAxisY = max(-1.f, min(1.f, moveAxisY));
 
 	// Shift key: speed boost
 	if (g_input->IsKeyPressed(VK_SHIFT))
-		speedScale = __max(speedScale, 10.f);
+		speedScale = max(speedScale, 10.f);
 
 	// Mouse look: hold right mouse button to rotate the camera
 	float mouseDeltaX = 0.f;

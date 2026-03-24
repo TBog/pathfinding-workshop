@@ -56,7 +56,7 @@ public:
         if ( !CheckRealloc( 1 ) )
             return -1;
 
-        myAssert( ( index >= 0 ) && ( index <= m_cursor ), L"DynVec()::Insert() - Invalid index for insert!" );
+        myAssert( ( index >= 0 ) && ( index <= m_cursor ), L"DynVec::Insert - Invalid index for insert!" );
 
         if( !before )
             index++;
@@ -73,12 +73,12 @@ public:
     // Returns a reference to the object at the position specified by the parameter.
     T &operator[] ( int index )
     { 
-        myAssert( ( index >= 0 ) && ( index < m_cursor ), L"DynVec()::[] - Index out of bounds!" );
+        myAssert( ( index >= 0 ) && ( index < m_cursor ), L"DynVec::[] - Index out of bounds!" );
         return m_vec[index];
     }
     const T &operator[] ( int index )     const
     { 
-        myAssert( ( index >= 0 ) && ( index < m_cursor ), L"DynVec()::[] - Index out of bounds!" );
+        myAssert( ( index >= 0 ) && ( index < m_cursor ), L"DynVec::const[] - Index out of bounds!" );
         return m_vec[index];
     }
 
@@ -86,13 +86,13 @@ public:
     // Note: The indices in the container can be made invalid after a call to this method
     void Remove( int index )
     {
-        myAssert((index >= 0) && (index < m_cursor), L"DynVec()::[] - Index out of bounds!");
+        myAssert((index >= 0) && (index < m_cursor), L"DynVec::Remove - Index out of bounds!");
         m_vec[index] = m_vec[--m_cursor];
     }
     
     void RemoveKeepOrder( int index )
     {
-        myAssert( ( index >= 0 ) && ( index < m_cursor ), L"DynVec()::[] - Index out of bounds!" );
+        myAssert( ( index >= 0 ) && ( index < m_cursor ), L"DynVec::RemoveKeepOrder - Index out of bounds!" );
         for( int i = index; i < m_cursor - 1; i++ )
             m_vec[i] = m_vec[i+1];
         
@@ -102,12 +102,12 @@ public:
     // same as the operator []
     T &At( int index )
     {
-        myAssert((index >= 0) && (index < m_cursor), L"DynVec()::[] - Index out of bounds!");
+        myAssert((index >= 0) && (index < m_cursor), L"DynVec::At - Index out of bounds!");
         return m_vec[index];
     }
     const T& AtConst( int index ) const
     {
-        myAssert( ( index >= 0 ) && ( index < m_cursor ), L"DynVec()::[] - Index out of bounds!" );
+        myAssert( ( index >= 0 ) && ( index < m_cursor ), L"DynVec::AtConst - Index out of bounds!" );
         return m_vec[index];
     }
 
@@ -118,7 +118,7 @@ public:
 
     void SetSize(int s, bool init)
     {
-        myAssert( ( s >= 0) && ( s <= m_size ), L"DynVec()::SetSize() - Size out of bounds!" );
+        myAssert( ( s >= 0) && ( s <= m_size ), L"DynVec::SetSize - Size out of bounds!" );
         m_cursor = s;
         if(init)
             memset( m_vec, 0, s * sizeof(T) );
@@ -189,6 +189,20 @@ private:
     DynVec( const DynVec& v )                       { }
     const DynVec& operator=( const DynVec&v )       { }
 
+public:
+	// Iterator types
+	using iterator = T*;
+	using const_iterator = const T*;
+
+	// Begin/end for mutable access
+	iterator begin() { return m_vec; }
+	iterator end() { return m_vec + m_cursor; }
+
+	// Begin/end for const access
+	const_iterator begin() const { return m_vec; }
+	const_iterator end() const { return m_vec + m_cursor; }
+	const_iterator cbegin() const { return m_vec; }
+	const_iterator cend() const { return m_vec + m_cursor; }
 
 protected:
     //---------------------------------------------------------------
@@ -203,7 +217,7 @@ protected:
             return false;
 
         int numGrows = ((m_cursor + numNewElems - m_size - 1) / m_grow) + 1;
-        myAssert( numGrows > 0, L"DynVec()::CheckRealloc() - numGrows == 0" );
+        myAssert( numGrows > 0, L"DynVec::CheckRealloc - numGrows == 0" );
         m_size += m_grow * numGrows;
 
         m_vec = (T*)realloc( m_vec, sizeof(T) * m_size );

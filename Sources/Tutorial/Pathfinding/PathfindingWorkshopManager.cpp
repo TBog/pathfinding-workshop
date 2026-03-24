@@ -165,22 +165,6 @@ void PathfindingWorkshopManager::_DrawDebugMenu()
 		WCHAR subItems[128] = {0};
 		if ((m_menuItem == i) && MENU_ITEMS_EXERCISES[i].subItemCount > 1)
 		{
-			//const wchar_t* subItemOptions[2] = { nullptr, nullptr };
-			//int subItemCount = 0;
-
-			//switch (static_cast<Exercise>(i))
-			//{
-			//case Exercise::AStarPathfinding:
-			//case Exercise::AStarPathfindingSmooth:
-			//	subItemOptions[0] = L"User";
-			//	subItemOptions[1] = L"Control";
-			//	subItemCount = 2;
-			//	break;
-			//default:
-			//	break;
-			//}
-			//myAssert(subItemCount == MENU_ITEMS_EXERCISES[i].subItemCount, L"Debug Menu subItem count mismatch");
-
 			const wchar_t* subItemOptions[2] = { L"User", L"Control" };
 			const int subItemCount = min(MENU_ITEMS_EXERCISES[i].subItemCount, ARRAYSIZE(subItemOptions));
 
@@ -216,15 +200,16 @@ void PathfindingWorkshopManager::_RunSignedAreaExercise()
 	// IsLeft exercise with a rotating line and some generated points in a circle around the line
 	{
 		const int pointsCount = 8;
+		const Vector3 center(-2.f, 0.f, 0.f);
 		Vector3 points[pointsCount];
 		for (int i = 0; i < pointsCount; i++)
 		{
 			float angle = (float)i / (float)pointsCount * 2.f * (float)D3DX_PI;
-			points[i] = Vector3(cosf(angle), 0.f, sinf(angle)) * 3.f;
+			points[i] = center + Vector3(cosf(angle), 0.f, sinf(angle)) * 3.f;
 		}
 
-		const Vector3 lineA(cosf(m_rotatingAngle) * 5.f, 0.f, sinf(m_rotatingAngle) * 5.f);
-		const Vector3 lineB(cosf(m_rotatingAngle) * -5.f, 0.f, sinf(m_rotatingAngle) * -5.f);
+		const Vector3 lineA = center + Vector3(cosf(m_rotatingAngle) * 5.f, 0.f, sinf(m_rotatingAngle) * 5.f);
+		const Vector3 lineB = center + Vector3(cosf(m_rotatingAngle) * -5.f, 0.f, sinf(m_rotatingAngle) * -5.f);
 
 		for (int i = 0; i < pointsCount; i++)
 		{
@@ -257,15 +242,16 @@ void PathfindingWorkshopManager::_RunSignedAreaExercise()
 
 	// IsCollinear exercise with some generated points to the left and some to the right of the line, and some on the line
 	{
-		const Vector3 lineA(10.f, 0.f, 0.f);
-		const Vector3 lineB(11.f, 0.f, 0.f);
+		const Vector3 center(6.f, 0.f, 0.f);
+		const Vector3 lineA(0.f, 0.f, 0.f);
+		const Vector3 lineB(1.f, 0.f, 0.f);
 		const int pointsCount = 6;
-		const Vector3 points[pointsCount] = { {9.f, 0.f, -1.f}, {9.f, 0.f, 0.f}, {9.f, 0.f, 1.f}, {12.f, 0.f, -1.f}, {12.f, 0.f, 0.f}, {12.f, 0.f, 1.f} };
+		const Vector3 points[pointsCount] = { {-1.f, 0.f, -1.f}, {-1.f, 0.f, 0.f}, {-1.f, 0.f, 1.f}, {2.f, 0.f, -1.f}, {2.f, 0.f, 0.f}, {2.f, 0.f, 1.f} };
 		for (int i = 0; i < pointsCount; i++)
 		{
-			Vector3 p1 = lineA;
-			Vector3 p2 = lineB;
-			Vector3 p3 = points[i];
+			Vector3 p1 = center + lineA;
+			Vector3 p2 = center + lineB;
+			Vector3 p3 = center + points[i];
 			// have all points on the same Y coordinate
 			const float height = i * .5f;
 			p1.y = height;
@@ -468,12 +454,20 @@ void _DrawTriangles(const Triangulation& triangulation, const Color& wireColor, 
 			g_debugRender->AddLine(p3, p2, wireColor);
 		}
 	}
+	if (triangles.GetSize() == 0)
+	{
+		const DynVec<Vector2>& points = triangulation.GetPoints();
+		for (int i = 0; i < points.GetSize(); i += 1)
+		{
+			g_debugRender->AddIcosahedron(Vector3(points[i].x, 0.f, points[i].y), .05f, COLOR_WHITE);
+		}
+	}
 }
 
 void _DrawTriangleNeighbors(Triangulation& triangulation, TriangleId triangleId, const Color& bgColor, const Color& fgColor)
 {
 	const DynVec<Vector2>& points = triangulation.GetPoints();
-	DynVec<Triangle> triangles(triangulation.GetTriangleCount(), 32);
+	DynVec<Triangle> triangles(max(triangulation.GetTriangleCount(), 32), 32);
 	triangulation.GetTriangles(triangles);
 	for (int i = 0; i < triangles.GetSize(); i += 1)
 	{
@@ -543,6 +537,8 @@ void PathfindingWorkshopManager::_RunRandomTriangulationExercise()
 
 void PathfindingWorkshopManager::_RunDelaunayTriangulationExercise()
 {
+	PathfindingWorkSheet* worksheet = GetSelectedMenuSubItem() == 0 ? m_userWorkSheet : m_controlWorkSheet;
+
 	const int pointCount = 16;
 	DynVec<Vector2> points(32, 32);
 	points.Add({ -5.f, -5.f });
@@ -560,54 +556,50 @@ void PathfindingWorkshopManager::_RunDelaunayTriangulationExercise()
 		g_debugRender->AddIcosahedron(p, .05f, COLOR_WHITE);
 	}
 
-	static TriangleId triangleId;
+	static int triangleId;
 	static int iterations = 0;
 	Triangulation triangulation;
 	Color wireColor = COLOR_YELLOW;
 
-	m_userWorkSheet->RandomTriangulation(points, triangulation);
-	m_userWorkSheet->EdgeFlipping(triangulation);
+	worksheet->RandomTriangulation(points, triangulation);
+	worksheet->EdgeFlipping(triangulation, iterations);
 
-	if (triangulation.GetTriangleCount() == 0)
+	if (!m_showDebugMenu)
 	{
-		wireColor = COLOR_WHITE;
-		m_controlWorkSheet->RandomTriangulation(points, triangulation);
-		m_controlWorkSheet->EdgeFlipping(triangulation, iterations);
+		const bool upPressed = g_input->IsKeyPressed(VK_UP);
+		const bool downPressed = g_input->IsKeyPressed(VK_DOWN);
+		const bool leftPressed = g_input->IsKeyPressed(VK_LEFT);
+		const bool rightPressed = g_input->IsKeyPressed(VK_RIGHT);
+		const bool upJustPressed = !m_upPressed && upPressed;
+		const bool downJustPressed = !m_downPressed && downPressed;
+		const bool leftJustPressed = !m_leftPressed && leftPressed;
+		const bool rightJustPressed = !m_rightPressed && rightPressed;
 
-		//static bool m_leftPressed = false;
-		//static bool m_rightPressed = false;
+		m_upPressed = upPressed;
+		m_downPressed = downPressed;
+		m_leftPressed = leftPressed;
+		m_rightPressed = rightPressed;
 
-		//const bool upPressed = g_input->IsKeyPressed(VK_UP);
-		//const bool downPressed = g_input->IsKeyPressed(VK_DOWN);
-		//const bool leftPressed = g_input->IsKeyPressed(VK_LEFT);
-		//const bool rightPressed = g_input->IsKeyPressed(VK_RIGHT);
-		//const bool upJustPressed = !m_upPressed && upPressed;
-		//const bool downJustPressed = !m_downPressed && downPressed;
-		//const bool leftJustPressed = !m_leftPressed && leftPressed;
-		//const bool rightJustPressed = !m_rightPressed && rightPressed;
+		if (upJustPressed)
+			iterations += 1;
+		if (downJustPressed)
+			iterations -= (iterations - 1) < 0 ? 0 : 1;
+		if (leftJustPressed)
+			triangleId -= (triangleId - 1) < -1 ? 0 : 1;
+		if (rightJustPressed)
+			triangleId += (triangleId + 1) > triangulation.GetTriangleCount() ? 0 : 1;
 
-		//m_upPressed = upPressed;
-		//m_downPressed = downPressed;
-		//m_leftPressed = leftPressed;
-		//m_rightPressed = rightPressed;
+		WCHAR msg[64];
+		swprintf_s(msg, ARRAYSIZE(msg), L"max iterations: %d\ntriangleId: %d", iterations, triangleId);
+		g_debugRender->AddText(0, 40, msg, COLOR_WHITE, COLOR_BLACK);
 
-		//if (upJustPressed)
-		//	iterations += 1;
-		//if (downJustPressed)
-		//	iterations -= (iterations - 1) < 0 ? 0 : 1;
-		//if (leftJustPressed)
-		//	triangleId -= (triangleId - 1) < -1 ? 0 : 1;
-		//if (rightJustPressed)
-		//	triangleId += (triangleId + 1) > triangulation.GetTriangleCount() ? 0 : 1;
-
-		//WCHAR msg[64];
-		//swprintf_s(msg, ARRAYSIZE(msg), L"max iterations: %d\ntriangleId: %d", iterations, triangleId);
-		//g_debugRender->AddText(0, 40, msg, COLOR_WHITE, COLOR_BLACK);
+		_DrawTriangles(triangulation, wireColor);
+		_DrawTriangleNeighbors(triangulation, TriangleId(triangleId), COLOR_MAGENTA, COLOR_CYAN);
 	}
-
-	_DrawTriangles(triangulation, wireColor, WithAlpha(COLOR_BLACK, .25f));
-	//_DrawTriangles(triangulation, wireColor);
-	//_DrawTriangleNeighbors(triangulation, triangleId, COLOR_GREEN, COLOR_YELLOW);
+	else
+	{
+		_DrawTriangles(triangulation, wireColor, WithAlpha(COLOR_BLACK, .25f));
+	}
 }
 
 void PathfindingWorkshopManager::GenerateRandomPointsAndObstacles(int pointCount, DynVec<Vector2>& obstacleCenters, DynVec<PointId>& obstaclesIndexes, DynVec<Pathfinding::TriangulationConstraint>& constraints)
@@ -687,6 +679,8 @@ void PathfindingWorkshopManager::GenerateRandomPointsAndObstacles(int pointCount
 
 void PathfindingWorkshopManager::_RunConstrainedDelaunayExercise()
 {
+	PathfindingWorkSheet* worksheet = GetSelectedMenuSubItem() == 0 ? m_userWorkSheet : m_controlWorkSheet;
+
 	const int pointCount = 28;
 	m_points.Clear();
 	DynVec<Vector2> obstacleCenters(5, 5);
@@ -698,17 +692,9 @@ void PathfindingWorkshopManager::_RunConstrainedDelaunayExercise()
 
 	// Build Triangulation
 	Color wireColor = COLOR_YELLOW;
-	m_userWorkSheet->RandomTriangulation(m_points, triangulation);
-	m_userWorkSheet->EdgeFlipping(triangulation);
-	m_userWorkSheet->AddTriangulationConstraints(triangulation, constraints);
-
-	if (triangulation.GetTriangleCount() == 0)
-	{
-		wireColor = COLOR_WHITE;
-		m_controlWorkSheet->RandomTriangulation(m_points, triangulation);
-		m_controlWorkSheet->EdgeFlipping(triangulation);
-		m_controlWorkSheet->AddTriangulationConstraints(triangulation, constraints);
-	}
+	worksheet->RandomTriangulation(m_points, triangulation);
+	worksheet->EdgeFlipping(triangulation);
+	worksheet->AddTriangulationConstraints(triangulation, constraints);
 
 	_DrawTriangles(triangulation, wireColor, WithAlpha(COLOR_BLACK, .25f));
 }
@@ -933,8 +919,8 @@ void PathfindingWorkshopManager::_RunAStarPathfindingExercise()
 	{
 		const Vector3 p1(path[i].x, 0.f, path[i].y);
 		const Vector3 p2(path[i + 1].x, 0.f, path[i + 1].y);
-		g_debugRender->AddLine(p1, p2, COLOR_RED);
-		g_debugRender->AddWireCircle(p2, .1f, { 0.f, 1.f, 0.f }, COLOR_RED);
+		g_debugRender->AddLine(p1, p2, COLOR_YELLOW);
+		g_debugRender->AddWireCircle(p2, .1f, { 0.f, 1.f, 0.f }, COLOR_YELLOW);
 	}
 }
 
@@ -985,8 +971,8 @@ void PathfindingWorkshopManager::_RunAStarPathfindingSmoothExercise()
 	{
 		const Vector3 p1(path[i].x, 0.f, path[i].y);
 		const Vector3 p2(path[i + 1].x, 0.f, path[i + 1].y);
-		g_debugRender->AddLine(p1, p2, COLOR_RED);
-		g_debugRender->AddWireCircle(p2, .1f, { 0.f, 1.f, 0.f }, COLOR_RED);
+		g_debugRender->AddLine(p1, p2, COLOR_YELLOW);
+		g_debugRender->AddWireCircle(p2, .1f, { 0.f, 1.f, 0.f }, COLOR_YELLOW);
 	}
 
 	for (int i = 0; i < smoothPath.GetSize() - 1; i += 1)

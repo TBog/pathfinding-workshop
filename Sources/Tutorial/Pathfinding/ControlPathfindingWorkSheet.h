@@ -143,8 +143,8 @@ namespace Pathfinding
 		void RandomTriangulation(const DynVec<Vector2>& points, Triangulation& triangulation) override
 		{
 			// Add all points to triangulation
-			for (int i = 0; i < points.GetSize(); ++i)
-				triangulation.AddPoint(points[i]);
+			for (auto& point : points)
+				triangulation.AddPoint(point);
 
 			// Compute convex hull
 			DynVec<PointId> hull(points.GetSize(), 10);
