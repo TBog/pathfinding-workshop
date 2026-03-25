@@ -60,6 +60,7 @@ public:
     //---------------------------------------------------------------
     HRESULT                         CreateDevice            ( HWND hWnd );
     void                            DestroyDevice           ( );
+    void                            ResizeSwapChain         ( int width, int height );
 
     void                            Update                  ( float dt );
     void                            Present                 ( );

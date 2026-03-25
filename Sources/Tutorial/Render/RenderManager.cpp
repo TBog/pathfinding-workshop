@@ -380,6 +380,63 @@ void RenderManager::DestroyDevice()
 
 //-------------------------------------------------------------------
 
+void RenderManager::ResizeSwapChain(int width, int height)
+{
+	if (width <= 0 || height <= 0)
+		return;
+
+	m_resolutionWidth = width;
+	m_resolutionHeight = height;
+
+	// Unbind render targets before resizing the swap chain
+	m_d3dImmediateContext->OMSetRenderTargets(0, NULL, NULL);
+	SAFE_RELEASE(m_backBuffer_RenderTargetView);
+	SAFE_RELEASE(m_backBuffer_DepthStencilView);
+
+	// Resize the swap chain buffers to the new dimensions
+	HRESULT hr = m_d3dSwapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
+	myAssert(SUCCEEDED(hr), L"ResizeSwapChain - ResizeBuffers failed!");
+
+	// Recreate the render target view from the new back buffer
+	ID3D11Texture2D* backBuffer = NULL;
+	hr = m_d3dSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
+	myAssert(SUCCEEDED(hr), L"ResizeSwapChain - GetBuffer failed!");
+	hr = m_d3dDevice->CreateRenderTargetView(backBuffer, NULL, &m_backBuffer_RenderTargetView);
+	myAssert(SUCCEEDED(hr), L"ResizeSwapChain - CreateRenderTargetView failed!");
+	SAFE_RELEASE(backBuffer);
+
+	// Recreate the depth stencil texture and view at the new resolution
+	ID3D11Texture2D* depthStencil = NULL;
+	D3D11_TEXTURE2D_DESC descDepth;
+	descDepth.Width = m_resolutionWidth;
+	descDepth.Height = m_resolutionHeight;
+	descDepth.MipLevels = 1;
+	descDepth.ArraySize = 1;
+	descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	descDepth.SampleDesc.Count = 1;
+	descDepth.SampleDesc.Quality = 0;
+	descDepth.Usage = D3D11_USAGE_DEFAULT;
+	descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	descDepth.CPUAccessFlags = 0;
+	descDepth.MiscFlags = 0;
+	hr = m_d3dDevice->CreateTexture2D(&descDepth, NULL, &depthStencil);
+	myAssert(SUCCEEDED(hr), L"ResizeSwapChain - Create depth buffer failed!");
+
+	D3D11_DEPTH_STENCIL_VIEW_DESC descDSV;
+	descDSV.Format = descDepth.Format;
+	descDSV.Flags = 0;
+	descDSV.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	descDSV.Texture2D.MipSlice = 0;
+	hr = m_d3dDevice->CreateDepthStencilView(depthStencil, &descDSV, &m_backBuffer_DepthStencilView);
+	myAssert(SUCCEEDED(hr), L"ResizeSwapChain - CreateDepthStencilView failed!");
+	SAFE_RELEASE(depthStencil);
+
+	// Rebind the render target and update the viewport
+	SetBackBufferRenderTarget();
+}
+
+//-------------------------------------------------------------------
+
 void RenderManager::Update(float dt)
 {
 }
