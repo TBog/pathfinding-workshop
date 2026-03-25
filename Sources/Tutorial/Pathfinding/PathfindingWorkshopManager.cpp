@@ -419,23 +419,6 @@ static float _SignedPolygonArea(const DynVec<Vector2>& points, const DynVec<Poin
 	return area * 0.5f;
 }
 
-// Returns the 2D signed area of triangle (p1, p2, p3).
-static float _SignedArea2D(const Vector2& p1, const Vector2& p2, const Vector2& p3)
-{
-	return p1.x * p2.y + p2.x * p3.y + p3.x * p1.y
-		- p1.x * p3.y - p3.x * p2.y - p2.x * p1.y;
-}
-
-// Returns true when P lies strictly inside triangle (p1, p2, p3), false on boundary or outside.
-static bool _IsStrictlyInsideTriangle2D(const Vector2& p1, const Vector2& p2, const Vector2& p3, const Vector2& P)
-{
-	const float s1 = _SignedArea2D(p1, p2, P);
-	const float s2 = _SignedArea2D(p2, p3, P);
-	const float s3 = _SignedArea2D(p3, p1, P);
-	return (s1 < -FLT_EPSILON && s2 < -FLT_EPSILON && s3 < -FLT_EPSILON)
-		|| (s1 > FLT_EPSILON && s2 > FLT_EPSILON && s3 > FLT_EPSILON);
-}
-
 // Draws a red wire-circle at world-space ground position P to flag an error.
 static void _MarkErrorPoint(const Vector2& P)
 {
@@ -445,7 +428,7 @@ static void _MarkErrorPoint(const Vector2& P)
 // Validates the user's convex hull and draws red markers for any detected errors:
 //   - duplicate consecutive points (including wrap-around from last to first)
 //   - input points that lie outside the hull polygon
-static void _ValidateConvexHull(const DynVec<Vector2>& points, const DynVec<PointId>& userHull)
+static void _ValidateConvexHull(const DynVec<Vector2>& points, const DynVec<PointId>& userHull, PathfindingWorkSheet* controlSheet)
 {
 	const int hullSize = userHull.GetSize();
 
@@ -478,9 +461,9 @@ static void _ValidateConvexHull(const DynVec<Vector2>& points, const DynVec<Poin
 				{
 					const Vector2& A = points[userHull[j]];
 					const Vector2& B = points[userHull[(j + 1) % hullSize]];
-					// Cross product (B-A) x (P-A); negative*windingSign => point is outside edge
-					const float cross = (B.x - A.x) * (P.y - A.y) - (B.y - A.y) * (P.x - A.x);
-					if (cross * windingSign < -FLT_EPSILON)
+					// Signed area of (A, B, P); negative*windingSign => point is outside edge
+					const float signedArea = controlSheet->SignedArea(A, B, P);
+					if (signedArea * windingSign < -FLT_EPSILON)
 					{
 						inside = false;
 						break;
@@ -498,9 +481,19 @@ static void _ValidateConvexHull(const DynVec<Vector2>& points, const DynVec<Poin
 //   - degenerate triangles (zero or near-zero area)      -> red wire triangle
 //   - wrong/non-reciprocal triangle neighbor links       -> red line from triangle center
 //   - overlapping triangles (non-adjacent, vertex inside) -> red filled triangle
-static void _ValidateTriangulation(const DynVec<Vector2>& points, const Triangulation& triangulation)
+static void _ValidateTriangulation(const DynVec<Vector2>& points, const Triangulation& triangulation, PathfindingWorkSheet* controlSheet)
 {
 	static constexpr float DEGENERATE_AREA_THRESHOLD = 1e-6f;
+
+	// Returns true when P lies strictly inside triangle (a, b, c), excluding boundary.
+	auto isStrictlyInside = [&](const Vector2& a, const Vector2& b, const Vector2& c, const Vector2& P) -> bool
+	{
+		const float s1 = controlSheet->SignedArea(a, b, P);
+		const float s2 = controlSheet->SignedArea(b, c, P);
+		const float s3 = controlSheet->SignedArea(c, a, P);
+		return (s1 < -FLT_EPSILON && s2 < -FLT_EPSILON && s3 < -FLT_EPSILON)
+			|| (s1 > FLT_EPSILON && s2 > FLT_EPSILON && s3 > FLT_EPSILON);
+	};
 
 	DynVec<Triangle> triangles(max(32, triangulation.GetTriangleCount()), 32);
 	triangulation.GetTriangles(triangles);
@@ -543,7 +536,7 @@ static void _ValidateTriangulation(const DynVec<Vector2>& points, const Triangul
 		const Vector3 triCenter = (v1 + v2 + v3) * (1.f / 3.f);
 
 		// --- 2. Degenerate triangle (zero/near-zero area) ---
-		const float area = _SignedArea2D(tp1, tp2, tp3);
+		const float area = controlSheet->SignedArea(tp1, tp2, tp3);
 		if (fabsf(area) < DEGENERATE_AREA_THRESHOLD)
 		{
 			g_debugRender->AddWireTriangle(v1, v2, v3, COLOR_RED);
@@ -586,6 +579,7 @@ static void _ValidateTriangulation(const DynVec<Vector2>& points, const Triangul
 
 		// --- 4. Overlapping triangles ---
 		// Check if any non-shared vertex of another triangle is strictly inside this one.
+		// Uses SignedArea to detect strict interior (excludes boundary/shared edges).
 		for (int j = i + 1; j < numTriangles; j++)
 		{
 			const Triangle& other = triangles[j];
@@ -612,7 +606,7 @@ static void _ValidateTriangulation(const DynVec<Vector2>& points, const Triangul
 				const PointId vid = other.GetPointId(v);
 				if (tri.p1Id == vid || tri.p2Id == vid || tri.p3Id == vid) continue;
 				if (vid.IsValid() && vid < numPoints)
-					overlap = _IsStrictlyInsideTriangle2D(tp1, tp2, tp3, points[vid]);
+					overlap = isStrictlyInside(tp1, tp2, tp3, points[vid]);
 			}
 			// Check if any non-shared vertex of 'tri' is strictly inside 'other'
 			for (int v = 1; v <= 3 && !overlap; v++)
@@ -620,7 +614,7 @@ static void _ValidateTriangulation(const DynVec<Vector2>& points, const Triangul
 				const PointId vid = tri.GetPointId(v);
 				if (other.p1Id == vid || other.p2Id == vid || other.p3Id == vid) continue;
 				if (vid.IsValid() && vid < numPoints)
-					overlap = _IsStrictlyInsideTriangle2D(op1, op2, op3, points[vid]);
+					overlap = isStrictlyInside(op1, op2, op3, points[vid]);
 			}
 
 			if (overlap)
@@ -661,7 +655,7 @@ void PathfindingWorkshopManager::_RunConvexHullExercise()
 
 	_DrawConvexHull(points, userHull, COLOR_YELLOW);
 	_DrawConvexHull(points, controlHull, WithAlpha(COLOR_WHITE, 0.5f), .05f);
-	_ValidateConvexHull(points, userHull);
+	_ValidateConvexHull(points, userHull, m_controlWorkSheet);
 }
 
 void _DrawTriangles(const Triangulation& triangulation, const Color& wireColor, const Color& triangleColor = COLOR_TRANSPARENT)
@@ -765,7 +759,7 @@ void PathfindingWorkshopManager::_RunRandomTriangulationExercise()
 	}
 	else
 	{
-		_ValidateTriangulation(points, triangulation);
+		_ValidateTriangulation(points, triangulation, m_controlWorkSheet);
 	}
 
 	_DrawTriangles(triangulation, wireColor, WithAlpha(COLOR_BLACK, .25f));
