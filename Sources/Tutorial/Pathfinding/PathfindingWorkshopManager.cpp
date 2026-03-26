@@ -503,7 +503,66 @@ void _DrawTriangleNeighbors(Triangulation& triangulation, TriangleId triangleId,
 	}
 }
 
+void GenerateRandomPoints(DynVec<Vector2>& points, int count, float min = -5.f, float max = 5.f, unsigned int seed = 0)
+{
+	std::mt19937 rng(seed);
+	std::uniform_real_distribution<float> dist(min, max);
+	points.Clear();
+	for (int i = 0; i < count; i++)
+	{
+		points.Add({ dist(rng), dist(rng) });
+	}
+}
+
 void PathfindingWorkshopManager::_RunRandomTriangulationExercise()
+{
+	if (!m_showDebugMenu)
+	{
+		const bool leftPressed = g_input->IsKeyPressed(VK_LEFT);
+		const bool rightPressed = g_input->IsKeyPressed(VK_RIGHT);
+		const bool leftJustPressed = !m_leftPressed && leftPressed;
+		const bool rightJustPressed = !m_rightPressed && rightPressed;
+
+		m_leftPressed = leftPressed;
+		m_rightPressed = rightPressed;
+
+		if (leftJustPressed)
+			m_randomSeed -= 1;
+		if (rightJustPressed)
+			m_randomSeed += 1;
+
+		WCHAR msg[64];
+		swprintf_s(msg, ARRAYSIZE(msg), L"seed: %u", m_randomSeed);
+		g_debugRender->AddText(0, 40, msg, COLOR_WHITE, COLOR_BLACK);
+	}
+
+	GenerateRandomPoints(m_points, 8, -4.9f, 4.9f, m_randomSeed);
+	m_points.Add({ -5.f, -5.f });
+	m_points.Add({ -5.f, 5.f });
+	m_points.Add({ 5.f, -5.f });
+	m_points.Add({ 5.f, 5.f });
+
+
+	for (int i = 0; i < m_points.GetSize(); i += 1)
+	{
+		const Vector3 p(m_points[i].x, 0.f, m_points[i].y);
+		g_debugRender->AddIcosahedron(p, .05f, COLOR_WHITE);
+	}
+
+	Triangulation triangulation;
+	m_userWorkSheet->RandomTriangulation(m_points, triangulation);
+
+	Color wireColor = COLOR_YELLOW;
+	if (triangulation.GetTriangleCount() == 0)
+	{
+		wireColor = COLOR_WHITE;
+		m_controlWorkSheet->RandomTriangulation(m_points, triangulation);
+	}
+
+	_DrawTriangles(triangulation, wireColor, WithAlpha(COLOR_BLACK, .25f));
+}
+
+void PathfindingWorkshopManager::_RunRandomTriangulationExercise2()
 {
 	const int pointCount = 16;
 	DynVec<Vector2> points(32, 32);

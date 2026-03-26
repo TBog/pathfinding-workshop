@@ -47,6 +47,7 @@ protected:
 	void _RunInsideTriangleCircumcircleExercise();
 	void _RunConvexHullExercise();
 	void _RunRandomTriangulationExercise();
+	void _RunRandomTriangulationExercise2();
 	void _RunDelaunayTriangulationExercise();
 	void _RunConstrainedDelaunayExercise();
 	void _RunGridPathfindingExercise();

@@ -144,13 +144,13 @@
       <Filter>Pathfinding</Filter>
     </ClInclude>
     <ClInclude Include="Pathfinding\Triangulation.h">
-      <Filter>Utils</Filter>
+      <Filter>Pathfinding</Filter>
     </ClInclude>
     <ClInclude Include="Pathfinding\Types.h">
-      <Filter>Utils</Filter>
+      <Filter>Pathfinding</Filter>
     </ClInclude>
     <ClInclude Include="Pathfinding\Utils.h">
-      <Filter>Utils</Filter>
+      <Filter>Pathfinding</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -230,7 +230,12 @@
     <ClCompile Include="Pathfinding\PathfindingWorkshopManager.cpp">
       <Filter>Pathfinding</Filter>
     </ClCompile>
-    <ClCompile Include="Pathfinding\Triangulation.cpp" />
+    <ClCompile Include="Pathfinding\Triangulation.cpp">
+      <Filter>Pathfinding</Filter>
+    </ClCompile>
+    <ClCompile Include="Pathfinding\UserPathfindingWorkSheet.cpp">
+      <Filter>Pathfinding</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Tutorial.rc">
