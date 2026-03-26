@@ -182,9 +182,6 @@ namespace Pathfinding
 
 		if (!cp1.IsValid() || !cp2.IsValid())
 		{
-			WCHAR msg[512];
-			swprintf_s(msg, ARRAYSIZE(msg), L"[Triangulation::GetTriangleNeighbouringInfo] Triangles are not neighbours (%d, %d)", t1Idx.value, t2Idx.value);
-			ShowErrorMessageBox(msg);
 			return TriangleNeighbourInfo();
 		}
 
@@ -295,7 +292,10 @@ namespace Pathfinding
 			TriangleId n = t.GetTriangleId(i);
 			if (n != -1)
 			{
-				neighbours.Add(GetTriangleNeighbouringInfo(tId, n));
+				TriangleNeighbourInfo info = GetTriangleNeighbouringInfo(tId, n);
+				// Only add the info if the common edge was found (skip invalid/unlinked neighbours)
+				if (info.p2Id.IsValid() && info.p3Id.IsValid())
+					neighbours.Add(info);
 			}
 		}
 	}
@@ -349,7 +349,6 @@ namespace Pathfinding
 
 		if (!cp1.IsValid() || !cp2.IsValid())
 		{
-			ShowErrorMessageBox(L"[Triangulation::LinkTriangles] Triangles are not neighbours");
 			return;
 		}
 
