@@ -422,7 +422,7 @@ static float _SignedPolygonArea(const DynVec<Vector2>& points, const DynVec<Poin
 // Draws a red wire-circle at world-space ground position P to flag an error.
 static void _MarkErrorPoint(const Vector2& P)
 {
-	g_debugRender->AddWireCircle(Vector3(P.x, 0.f, P.y), 0.2f, Vector3(0.f, 1.f, 0.f), COLOR_RED);
+	g_debugRender->AddWireCircle(Vector3(P.x, 0.f, P.y), 0.2f, Vector3(0.f, 1.f, 0.f), COLOR_MAGENTA);
 }
 
 // Validates the user's convex hull and draws red markers for any detected errors:
@@ -463,7 +463,7 @@ static void _ValidateConvexHull(const DynVec<Vector2>& points, const DynVec<Poin
 					const Vector2& B = points[userHull[(j + 1) % hullSize]];
 					// Signed area of (A, B, P); negative*windingSign => point is outside edge
 					const float signedArea = controlSheet->SignedArea(A, B, P);
-					if (signedArea * windingSign < -FLT_EPSILON)
+					if (signedArea * windingSign < -1.2e-05F)
 					{
 						inside = false;
 						break;
