@@ -404,6 +404,231 @@ static void _DrawConvexHull(const DynVec<Vector2>& points, const DynVec<PointId>
 	}
 }
 
+// Returns the signed area (shoelace) of a polygon defined by hull indices into points.
+// Positive = CCW winding, negative = CW winding.
+static float _SignedPolygonArea(const DynVec<Vector2>& points, const DynVec<PointId>& hull)
+{
+	const int n = hull.GetSize();
+	float area = 0.f;
+	for (int i = 0; i < n; i++)
+	{
+		const Vector2& a = points[hull[i]];
+		const Vector2& b = points[hull[(i + 1) % n]];
+		area += a.x * b.y - b.x * a.y;
+	}
+	return area * 0.5f;
+}
+
+// Draws a red wire-circle at world-space ground position P to flag an error.
+static void _MarkErrorPoint(const Vector2& P)
+{
+	g_debugRender->AddWireCircle(Vector3(P.x, 0.f, P.y), 0.2f, Vector3(0.f, 1.f, 0.f), COLOR_RED);
+}
+
+// Validates the user's convex hull and draws red markers for any detected errors:
+//   - duplicate consecutive points (including wrap-around from last to first)
+//   - input points that lie outside the hull polygon
+static void _ValidateConvexHull(const DynVec<Vector2>& points, const DynVec<PointId>& userHull, PathfindingWorkSheet* controlSheet)
+{
+	const int hullSize = userHull.GetSize();
+
+	// Check for duplicate consecutive points (including last->first wrap-around)
+	if (hullSize >= 2)
+	{
+		for (int i = 0; i < hullSize; i++)
+		{
+			const PointId curr = userHull[i];
+			const PointId next = userHull[(i + 1) % hullSize];
+			if (curr == next)
+				_MarkErrorPoint(points[curr]);
+		}
+	}
+
+	// Check that every input point lies inside or on the hull polygon
+	if (hullSize >= 3)
+	{
+		const float polyArea = _SignedPolygonArea(points, userHull);
+		if (fabsf(polyArea) > FLT_EPSILON)
+		{
+			// windingSign > 0 for CCW, < 0 for CW
+			const float windingSign = (polyArea > 0.f) ? 1.f : -1.f;
+
+			for (int i = 0; i < points.GetSize(); i++)
+			{
+				const Vector2& P = points[i];
+				bool inside = true;
+				for (int j = 0; j < hullSize; j++)
+				{
+					const Vector2& A = points[userHull[j]];
+					const Vector2& B = points[userHull[(j + 1) % hullSize]];
+					// Signed area of (A, B, P); negative*windingSign => point is outside edge
+					const float signedArea = controlSheet->SignedArea(A, B, P);
+					if (signedArea * windingSign < -FLT_EPSILON)
+					{
+						inside = false;
+						break;
+					}
+				}
+				if (!inside)
+					_MarkErrorPoint(P);
+			}
+		}
+	}
+}
+
+// Validates a user-produced triangulation and draws red markers for detected errors:
+//   - missing points (not a vertex of any triangle)      -> red wire circle
+//   - degenerate triangles (zero or near-zero area)      -> red wire triangle
+//   - wrong/non-reciprocal triangle neighbor links       -> red line from triangle center
+//   - overlapping triangles (non-adjacent, vertex inside) -> red filled triangle
+static void _ValidateTriangulation(const DynVec<Vector2>& points, const Triangulation& triangulation, PathfindingWorkSheet* controlSheet)
+{
+	static constexpr float DEGENERATE_AREA_THRESHOLD = 1e-6f;
+
+	// Returns true when P lies strictly inside triangle (a, b, c), excluding boundary.
+	auto isStrictlyInside = [&](const Vector2& a, const Vector2& b, const Vector2& c, const Vector2& P) -> bool
+	{
+		const float s1 = controlSheet->SignedArea(a, b, P);
+		const float s2 = controlSheet->SignedArea(b, c, P);
+		const float s3 = controlSheet->SignedArea(c, a, P);
+		return (s1 < -FLT_EPSILON && s2 < -FLT_EPSILON && s3 < -FLT_EPSILON)
+			|| (s1 > FLT_EPSILON && s2 > FLT_EPSILON && s3 > FLT_EPSILON);
+	};
+
+	DynVec<Triangle> triangles(max(32, triangulation.GetTriangleCount()), 32);
+	triangulation.GetTriangles(triangles);
+
+	const int numTriangles = triangles.GetSize();
+	const int numPoints = points.GetSize();
+
+	if (numTriangles == 0)
+		return;
+
+	// --- 1. Missing points ---
+	std::vector<int> pointUsed(numPoints, 0);
+	for (int i = 0; i < numTriangles; i++)
+	{
+		const Triangle& tri = triangles[i];
+		if (tri.p1Id.IsValid() && tri.p1Id < numPoints) pointUsed[tri.p1Id] = 1;
+		if (tri.p2Id.IsValid() && tri.p2Id < numPoints) pointUsed[tri.p2Id] = 1;
+		if (tri.p3Id.IsValid() && tri.p3Id < numPoints) pointUsed[tri.p3Id] = 1;
+	}
+	for (int i = 0; i < numPoints; i++)
+	{
+		if (!pointUsed[i])
+			_MarkErrorPoint(points[i]);
+	}
+
+	for (int i = 0; i < numTriangles; i++)
+	{
+		const Triangle& tri = triangles[i];
+
+		if (!tri.p1Id.IsValid() || tri.p1Id >= numPoints) continue;
+		if (!tri.p2Id.IsValid() || tri.p2Id >= numPoints) continue;
+		if (!tri.p3Id.IsValid() || tri.p3Id >= numPoints) continue;
+
+		const Vector2& tp1 = points[tri.p1Id];
+		const Vector2& tp2 = points[tri.p2Id];
+		const Vector2& tp3 = points[tri.p3Id];
+		const Vector3 v1(tp1.x, 0.f, tp1.y);
+		const Vector3 v2(tp2.x, 0.f, tp2.y);
+		const Vector3 v3(tp3.x, 0.f, tp3.y);
+		const Vector3 triCenter = (v1 + v2 + v3) * (1.f / 3.f);
+
+		// --- 2. Degenerate triangle (zero/near-zero area) ---
+		const float area = controlSheet->SignedArea(tp1, tp2, tp3);
+		if (fabsf(area) < DEGENERATE_AREA_THRESHOLD)
+		{
+			g_debugRender->AddWireTriangle(v1, v2, v3, COLOR_RED);
+		}
+
+		// --- 3. Wrong / non-reciprocal neighbor links ---
+		for (int k = 1; k <= 3; k++)
+		{
+			const TriangleId nId = tri.GetTriangleId(k);
+			if (!nId.IsValid()) continue;
+
+			bool neighborFound = false;
+			bool reciprocal = false;
+			bool sharesEdge = false;
+
+			for (int j = 0; j < numTriangles; j++)
+			{
+				if (triangles[j].id != nId) continue;
+				neighborFound = true;
+				const Triangle& neigh = triangles[j];
+
+				reciprocal = (neigh.t1Id == tri.id || neigh.t2Id == tri.id || neigh.t3Id == tri.id);
+
+				int sharedVerts = 0;
+				if (tri.p1Id == neigh.p1Id || tri.p1Id == neigh.p2Id || tri.p1Id == neigh.p3Id) sharedVerts++;
+				if (tri.p2Id == neigh.p1Id || tri.p2Id == neigh.p2Id || tri.p2Id == neigh.p3Id) sharedVerts++;
+				if (tri.p3Id == neigh.p1Id || tri.p3Id == neigh.p2Id || tri.p3Id == neigh.p3Id) sharedVerts++;
+				sharesEdge = (sharedVerts >= 2);
+				break;
+			}
+
+			if (!neighborFound || !reciprocal || !sharesEdge)
+			{
+				// Draw a red line from the triangle center toward the bad link direction
+				g_debugRender->AddLine(triCenter, triCenter + Vector3(0.f, 0.3f, 0.f), COLOR_RED);
+				g_debugRender->AddWireCircle(triCenter, 0.15f, Vector3(0.f, 1.f, 0.f), COLOR_RED);
+				break; // one marker per triangle is enough
+			}
+		}
+
+		// --- 4. Overlapping triangles ---
+		// Check if any non-shared vertex of another triangle is strictly inside this one.
+		// Uses SignedArea to detect strict interior (excludes boundary/shared edges).
+		for (int j = i + 1; j < numTriangles; j++)
+		{
+			const Triangle& other = triangles[j];
+
+			if (!other.p1Id.IsValid() || other.p1Id >= numPoints) continue;
+			if (!other.p2Id.IsValid() || other.p2Id >= numPoints) continue;
+			if (!other.p3Id.IsValid() || other.p3Id >= numPoints) continue;
+
+			// Count shared vertices to skip edge-adjacent triangles
+			int sharedVerts = 0;
+			if (tri.p1Id == other.p1Id || tri.p1Id == other.p2Id || tri.p1Id == other.p3Id) sharedVerts++;
+			if (tri.p2Id == other.p1Id || tri.p2Id == other.p2Id || tri.p2Id == other.p3Id) sharedVerts++;
+			if (tri.p3Id == other.p1Id || tri.p3Id == other.p2Id || tri.p3Id == other.p3Id) sharedVerts++;
+			if (sharedVerts >= 2) continue;
+
+			const Vector2& op1 = points[other.p1Id];
+			const Vector2& op2 = points[other.p2Id];
+			const Vector2& op3 = points[other.p3Id];
+
+			bool overlap = false;
+			// Check if any non-shared vertex of 'other' is strictly inside 'tri'
+			for (int v = 1; v <= 3 && !overlap; v++)
+			{
+				const PointId vid = other.GetPointId(v);
+				if (tri.p1Id == vid || tri.p2Id == vid || tri.p3Id == vid) continue;
+				if (vid.IsValid() && vid < numPoints)
+					overlap = isStrictlyInside(tp1, tp2, tp3, points[vid]);
+			}
+			// Check if any non-shared vertex of 'tri' is strictly inside 'other'
+			for (int v = 1; v <= 3 && !overlap; v++)
+			{
+				const PointId vid = tri.GetPointId(v);
+				if (other.p1Id == vid || other.p2Id == vid || other.p3Id == vid) continue;
+				if (vid.IsValid() && vid < numPoints)
+					overlap = isStrictlyInside(op1, op2, op3, points[vid]);
+			}
+
+			if (overlap)
+			{
+				const Vector3 ov1(op1.x, 0.f, op1.y);
+				const Vector3 ov2(op2.x, 0.f, op2.y);
+				const Vector3 ov3(op3.x, 0.f, op3.y);
+				g_debugRender->AddTriangle(v1, v2, v3, WithAlpha(COLOR_RED, 0.4f));
+				g_debugRender->AddTriangle(ov1, ov2, ov3, WithAlpha(COLOR_RED, 0.4f));
+			}
+		}
+	}
+}
+
 void PathfindingWorkshopManager::_RunConvexHullExercise()
 {
 	const int pointCount = 16;
@@ -430,6 +655,7 @@ void PathfindingWorkshopManager::_RunConvexHullExercise()
 
 	_DrawConvexHull(points, userHull, COLOR_YELLOW);
 	_DrawConvexHull(points, controlHull, WithAlpha(COLOR_WHITE, 0.5f), .05f);
+	_ValidateConvexHull(points, userHull, m_controlWorkSheet);
 }
 
 void _DrawTriangles(const Triangulation& triangulation, const Color& wireColor, const Color& triangleColor = COLOR_TRANSPARENT)
@@ -589,6 +815,10 @@ void PathfindingWorkshopManager::_RunRandomTriangulationExercise2()
 	{
 		wireColor = COLOR_WHITE;
 		m_controlWorkSheet->RandomTriangulation(points, triangulation);
+	}
+	else
+	{
+		_ValidateTriangulation(points, triangulation, m_controlWorkSheet);
 	}
 
 	_DrawTriangles(triangulation, wireColor, WithAlpha(COLOR_BLACK, .25f));
