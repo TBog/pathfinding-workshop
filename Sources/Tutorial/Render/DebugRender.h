@@ -52,68 +52,43 @@ public:
     // world matrix to orient the label in the scene (e.g. lying flat on a wall).
     void                            AddText                 ( const D3DXMATRIX &worldMatrix, const wchar_t *text, const D3DXCOLOR &color, const D3DXCOLOR &bgColor = D3DXCOLOR(0,0,0,0), const D3DXCOLOR &outlineColor = D3DXCOLOR(0,0,0,0) );
 
-    // Formatted text variants – colour parameters come before the format string so
-    // the template argument pack stays at the end.  Format strings use the C++20
-    // std::format "{}" syntax.  Each overload mirrors one of the AddText variants.
+    // Colour/style descriptor for AddTextFmt.
+    // Use C++20 designated initializers at the call site to name only the fields you need:
+    //   g_debugRender->AddTextFmt(x, y, {.color=COLOR_WHITE}, L"hello");
+    //   g_debugRender->AddTextFmt(x, y, {.color=COLOR_WHITE, .bgColor=COLOR_BLACK}, L"val: {}", v);
+    // NOTE: .color is mandatory – omitting it produces transparent (invisible) text.
+    struct DebugTextStyle
+    {
+        D3DXCOLOR               color;                                   // text foreground color (required)
+        D3DXCOLOR               bgColor      = D3DXCOLOR(0,0,0,0);  // alpha=0: no background fill
+        D3DXCOLOR               outlineColor = D3DXCOLOR(0,0,0,0);  // alpha=0: no outline/shadow
+    };
+
+    // Formatted text – format strings use the C++20 std::format "{}" syntax.
+    // Colour options are bundled in DebugTextStyle; use designated initializers.
 
     // Screen-space formatted text
     template<class... Args>
-    void                            AddTextFmt              ( int x, int y, const D3DXCOLOR &color, std::wformat_string<Args...> fmt, Args&&... args )
+    void                            AddTextFmt              ( int x, int y, const DebugTextStyle &style, std::wformat_string<Args...> fmt, Args&&... args )
     {
         const std::wstring text = std::format( fmt, std::forward<Args>( args )... );
-        AddText( x, y, text.c_str(), color );
-    }
-    template<class... Args>
-    void                            AddTextFmt              ( int x, int y, const D3DXCOLOR &color, const D3DXCOLOR &bgColor, std::wformat_string<Args...> fmt, Args&&... args )
-    {
-        const std::wstring text = std::format( fmt, std::forward<Args>( args )... );
-        AddText( x, y, text.c_str(), color, bgColor );
-    }
-    template<class... Args>
-    void                            AddTextFmt              ( int x, int y, const D3DXCOLOR &color, const D3DXCOLOR &bgColor, const D3DXCOLOR &outlineColor, std::wformat_string<Args...> fmt, Args&&... args )
-    {
-        const std::wstring text = std::format( fmt, std::forward<Args>( args )... );
-        AddText( x, y, text.c_str(), color, bgColor, outlineColor );
+        AddText( x, y, text.c_str(), style.color, style.bgColor, style.outlineColor );
     }
 
     // World-space 3D-position formatted text
     template<class... Args>
-    void                            AddTextFmt              ( const D3DXVECTOR3 &worldPos, const D3DXCOLOR &color, std::wformat_string<Args...> fmt, Args&&... args )
+    void                            AddTextFmt              ( const D3DXVECTOR3 &worldPos, const DebugTextStyle &style, std::wformat_string<Args...> fmt, Args&&... args )
     {
         const std::wstring text = std::format( fmt, std::forward<Args>( args )... );
-        AddText( worldPos, text.c_str(), color );
-    }
-    template<class... Args>
-    void                            AddTextFmt              ( const D3DXVECTOR3 &worldPos, const D3DXCOLOR &color, const D3DXCOLOR &bgColor, std::wformat_string<Args...> fmt, Args&&... args )
-    {
-        const std::wstring text = std::format( fmt, std::forward<Args>( args )... );
-        AddText( worldPos, text.c_str(), color, bgColor );
-    }
-    template<class... Args>
-    void                            AddTextFmt              ( const D3DXVECTOR3 &worldPos, const D3DXCOLOR &color, const D3DXCOLOR &bgColor, const D3DXCOLOR &outlineColor, std::wformat_string<Args...> fmt, Args&&... args )
-    {
-        const std::wstring text = std::format( fmt, std::forward<Args>( args )... );
-        AddText( worldPos, text.c_str(), color, bgColor, outlineColor );
+        AddText( worldPos, text.c_str(), style.color, style.bgColor, style.outlineColor );
     }
 
     // World-space matrix formatted text
     template<class... Args>
-    void                            AddTextFmt              ( const D3DXMATRIX &worldMatrix, const D3DXCOLOR &color, std::wformat_string<Args...> fmt, Args&&... args )
+    void                            AddTextFmt              ( const D3DXMATRIX &worldMatrix, const DebugTextStyle &style, std::wformat_string<Args...> fmt, Args&&... args )
     {
         const std::wstring text = std::format( fmt, std::forward<Args>( args )... );
-        AddText( worldMatrix, text.c_str(), color );
-    }
-    template<class... Args>
-    void                            AddTextFmt              ( const D3DXMATRIX &worldMatrix, const D3DXCOLOR &color, const D3DXCOLOR &bgColor, std::wformat_string<Args...> fmt, Args&&... args )
-    {
-        const std::wstring text = std::format( fmt, std::forward<Args>( args )... );
-        AddText( worldMatrix, text.c_str(), color, bgColor );
-    }
-    template<class... Args>
-    void                            AddTextFmt              ( const D3DXMATRIX &worldMatrix, const D3DXCOLOR &color, const D3DXCOLOR &bgColor, const D3DXCOLOR &outlineColor, std::wformat_string<Args...> fmt, Args&&... args )
-    {
-        const std::wstring text = std::format( fmt, std::forward<Args>( args )... );
-        AddText( worldMatrix, text.c_str(), color, bgColor, outlineColor );
+        AddText( worldMatrix, text.c_str(), style.color, style.bgColor, style.outlineColor );
     }
 
     // Sphere (wire and filled), tessellation controls slice/stack detail (default 16 => 16 slices, 8 stacks)
