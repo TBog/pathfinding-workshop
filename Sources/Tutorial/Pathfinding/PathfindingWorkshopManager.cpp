@@ -186,9 +186,7 @@ void PathfindingWorkshopManager::_DrawDebugMenu()
 				}
 			}
 		}
-		WCHAR msg[256];
-		swprintf_s(msg, ARRAYSIZE(msg), L"[%lc] %s %s", isSelected ? L'\u2713' : L' ', MENU_ITEMS_EXERCISES[i].name, subItems);
-		g_debugRender->AddText(menuX, menuY, msg, COLOR_BLACK, m_menuItem == i ? COLOR_YELLOW : COLOR_WHITE);
+		g_debugRender->AddTextFmt(menuX, menuY, COLOR_BLACK, m_menuItem == i ? COLOR_YELLOW : COLOR_WHITE, L"[{}] {} {}", isSelected ? L'\u2713' : L' ', MENU_ITEMS_EXERCISES[i].name, subItems);
 		menuY += lineHeight;
 	}
 }
@@ -227,9 +225,7 @@ void PathfindingWorkshopManager::_RunSignedAreaExercise()
 			g_debugRender->AddSphere(p1, .05f, COLOR_RED);
 			g_debugRender->AddSphere(p2, .05f, COLOR_BLUE);
 
-			WCHAR msg[32];
-			swprintf_s(msg, ARRAYSIZE(msg), L"<%d>", i);
-			g_debugRender->AddText(p3, msg, COLOR_BLACK, WithAlpha(COLOR_YELLOW, .75f));
+			g_debugRender->AddTextFmt(p3, COLOR_BLACK, WithAlpha(COLOR_YELLOW, .75f), L"<{}>", i);
 
 			Vector2 testPoints[] = { Vector2(p1.x, p1.z), Vector2(p2.x, p2.z), Vector2(p3.x, p3.z) };
 			const bool matchingIsLeft = m_userWorkSheet->IsLeft(testPoints[0], testPoints[1], testPoints[2]) == m_controlWorkSheet->IsLeft(testPoints[0], testPoints[1], testPoints[2]);
@@ -260,9 +256,7 @@ void PathfindingWorkshopManager::_RunSignedAreaExercise()
 			g_debugRender->AddLine(p1, p2, COLOR_WHITE);
 			g_debugRender->AddSphere(p1, .05f, COLOR_RED);
 			g_debugRender->AddSphere(p2, .05f, COLOR_BLUE);
-			WCHAR msg[32];
-			swprintf_s(msg, ARRAYSIZE(msg), L"<%d>", i);
-			g_debugRender->AddText(p3, msg, COLOR_BLACK, WithAlpha(COLOR_YELLOW, .75f));
+			g_debugRender->AddTextFmt(p3, COLOR_BLACK, WithAlpha(COLOR_YELLOW, .75f), L"<{}>", i);
 			Vector2 testPoints[] = { Vector2(p1.x, p1.z), Vector2(p2.x, p2.z), Vector2(p3.x, p3.z) };
 			const bool matchingIsCollinear = m_userWorkSheet->IsCollinear(testPoints[0], testPoints[1], testPoints[2]) == m_controlWorkSheet->IsCollinear(testPoints[0], testPoints[1], testPoints[2]);
 
@@ -707,9 +701,7 @@ void _DrawTriangleNeighbors(Triangulation& triangulation, TriangleId triangleId,
 		Vector3 center = Vector3(points[tri.p1Id].x, 0.f, points[tri.p1Id].y) + Vector3(points[tri.p2Id].x, 0.f, points[tri.p2Id].y) + Vector3(points[tri.p3Id].x, 0.f, points[tri.p3Id].y);
 		center *= (1.f / 3.f);
 		g_debugRender->AddSphere(center, .04f, WithAlpha(bgColor, .25f));
-		WCHAR msg[32];
-		swprintf_s(msg, ARRAYSIZE(msg), L"[%d]", tri.id.value);
-		g_debugRender->AddText(center, msg, fgColor, bgColor);
+		g_debugRender->AddTextFmt(center, fgColor, bgColor, L"[{}]", tri.id.value);
 
 		if (triangleId == -1 || triangleId == tri.id)
 		{
@@ -757,9 +749,7 @@ void PathfindingWorkshopManager::_RunRandomTriangulationExercise()
 		if (rightJustPressed)
 			m_randomSeed += 1;
 
-		WCHAR msg[64];
-		swprintf_s(msg, ARRAYSIZE(msg), L"seed: %u", m_randomSeed);
-		g_debugRender->AddText(0, 40, msg, COLOR_WHITE, COLOR_BLACK);
+		g_debugRender->AddTextFmt(0, 40, COLOR_WHITE, COLOR_BLACK, L"seed: {}", m_randomSeed);
 	}
 
 	GenerateRandomPoints(m_points, 8, -4.9f, 4.9f, m_randomSeed);
@@ -878,9 +868,7 @@ void PathfindingWorkshopManager::_RunDelaunayTriangulationExercise()
 		if (rightJustPressed)
 			triangleId += (triangleId + 1) > triangulation.GetTriangleCount() ? 0 : 1;
 
-		WCHAR msg[64];
-		swprintf_s(msg, ARRAYSIZE(msg), L"max iterations: %d\ntriangleId: %d", iterations, triangleId);
-		g_debugRender->AddText(0, 40, msg, COLOR_WHITE, COLOR_BLACK);
+		g_debugRender->AddTextFmt(0, 40, COLOR_WHITE, COLOR_BLACK, L"max iterations: {}\ntriangleId: {}", iterations, triangleId);
 
 		_DrawTriangles(triangulation, wireColor);
 		_DrawTriangleNeighbors(triangulation, TriangleId(triangleId), COLOR_MAGENTA, COLOR_CYAN);
@@ -1047,9 +1035,7 @@ void PathfindingWorkshopManager::_RunGridPathfindingExercise()
 			m_randomSeed += 1;
 	}
 
-	WCHAR msg[64];
-	swprintf_s(msg, ARRAYSIZE(msg), L"seed: %u", m_randomSeed);
-	g_debugRender->AddText(0, 40, msg, COLOR_WHITE, COLOR_BLACK);
+	g_debugRender->AddTextFmt(0, 40, COLOR_WHITE, COLOR_BLACK, L"seed: {}", m_randomSeed);
 
 	std::mt19937 rng(m_randomSeed);
 	std::uniform_real_distribution<float> distX(-4.9f, 4.9f);
