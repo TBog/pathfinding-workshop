@@ -5,6 +5,8 @@
 
 #include "..\Utils\DynVec.h"
 
+#include <format>
+
 //===================================================================
 //	CLASS DebugRender
 //===================================================================
@@ -37,18 +39,57 @@ public:
     void                            AddTriangle             ( const D3DXVECTOR3 &v0, const D3DXVECTOR3 &v1, const D3DXVECTOR3 &v2, const D3DXCOLOR &color );
     void                            AddQuad                 ( const D3DXVECTOR3 &v0, const D3DXVECTOR3 &v1, const D3DXVECTOR3 &v2, const D3DXVECTOR3 &v3, const D3DXCOLOR &color );
 
+    // Colour/style descriptor for AddText and AddTextFmt.
+    // Use C++20 designated initializers at the call site to name only the fields you need:
+    //   g_debugRender->AddText(x, y, text, {.color=COLOR_WHITE});
+    //   g_debugRender->AddText(x, y, text, {.color=COLOR_WHITE, .bgColor=COLOR_BLACK});
+    // NOTE: .color is mandatory – omitting it produces transparent (invisible) text.
+    struct DebugTextStyle
+    {
+        D3DXCOLOR               color;                               // text foreground color (required)
+        D3DXCOLOR               bgColor      = D3DXCOLOR(0,0,0,0);  // alpha=0: no background fill
+        D3DXCOLOR               outlineColor = D3DXCOLOR(0,0,0,0);  // alpha=0: no outline/shadow
+    };
+
     // Screen-space text at pixel coordinates (x, y).
-    // Pass a non-zero-alpha bgColor for a filled background rectangle.
-    // Pass a non-zero-alpha outlineColor for a 1-pixel outline drawn in four directions.
-    void                            AddText                 ( int x, int y, const wchar_t *text, const D3DXCOLOR &color, const D3DXCOLOR &bgColor = D3DXCOLOR(0,0,0,0), const D3DXCOLOR &outlineColor = D3DXCOLOR(0,0,0,0) );
+    // Set bgColor.a > 0 for a filled background rectangle.
+    // Set outlineColor.a > 0 for a 1-pixel outline drawn in four directions.
+    void                            AddText                 ( int x, int y, const wchar_t *text, const DebugTextStyle &style );
 
     // World-space text: the 3D position is projected to screen; the text is always camera-facing
-    void                            AddText                 ( const D3DXVECTOR3 &worldPos, const wchar_t *text, const D3DXCOLOR &color, const D3DXCOLOR &bgColor = D3DXCOLOR(0,0,0,0), const D3DXCOLOR &outlineColor = D3DXCOLOR(0,0,0,0) );
+    void                            AddText                 ( const D3DXVECTOR3 &worldPos, const wchar_t *text, const DebugTextStyle &style );
 
     // World-space text with a full transform matrix: position is taken from the matrix translation.
     // Pass a billboard matrix (built from camera axes) for camera-facing text, or any other
     // world matrix to orient the label in the scene (e.g. lying flat on a wall).
-    void                            AddText                 ( const D3DXMATRIX &worldMatrix, const wchar_t *text, const D3DXCOLOR &color, const D3DXCOLOR &bgColor = D3DXCOLOR(0,0,0,0), const D3DXCOLOR &outlineColor = D3DXCOLOR(0,0,0,0) );
+    void                            AddText                 ( const D3DXMATRIX &worldMatrix, const wchar_t *text, const DebugTextStyle &style );
+
+    // Formatted text – format strings use the C++20 std::format "{}" syntax.
+    // Colour options are bundled in DebugTextStyle; use designated initializers.
+
+    // Screen-space formatted text
+    template<class... Args>
+    void                            AddTextFmt              ( int x, int y, const DebugTextStyle &style, std::wformat_string<Args...> fmt, Args&&... args )
+    {
+        const std::wstring text = std::format( fmt, std::forward<Args>( args )... );
+        AddText( x, y, text.c_str(), style );
+    }
+
+    // World-space 3D-position formatted text
+    template<class... Args>
+    void                            AddTextFmt              ( const D3DXVECTOR3 &worldPos, const DebugTextStyle &style, std::wformat_string<Args...> fmt, Args&&... args )
+    {
+        const std::wstring text = std::format( fmt, std::forward<Args>( args )... );
+        AddText( worldPos, text.c_str(), style );
+    }
+
+    // World-space matrix formatted text
+    template<class... Args>
+    void                            AddTextFmt              ( const D3DXMATRIX &worldMatrix, const DebugTextStyle &style, std::wformat_string<Args...> fmt, Args&&... args )
+    {
+        const std::wstring text = std::format( fmt, std::forward<Args>( args )... );
+        AddText( worldMatrix, text.c_str(), style );
+    }
 
     // Sphere (wire and filled), tessellation controls slice/stack detail (default 16 => 16 slices, 8 stacks)
     void                            AddWireSphere           ( const D3DXVECTOR3 &center, float radius, const D3DXCOLOR &color, int tessellation = 16 );

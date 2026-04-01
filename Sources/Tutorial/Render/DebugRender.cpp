@@ -792,7 +792,7 @@ void DebugRender::AddWireTriangle(const D3DXVECTOR3& v0, const D3DXVECTOR3& v1, 
 // AddText – screen-space pixel coordinates
 //-------------------------------------------------------------------
 
-void DebugRender::AddText(int x, int y, const wchar_t* text, const D3DXCOLOR& color, const D3DXCOLOR& bgColor, const D3DXCOLOR& outlineColor)
+void DebugRender::AddText(int x, int y, const wchar_t* text, const DebugTextStyle& style)
 {
 	if (!text || !text[0])
 		return;
@@ -801,9 +801,9 @@ void DebugRender::AddText(int x, int y, const wchar_t* text, const D3DXCOLOR& co
 	wcsncpy_s(entry.m_text, text, _TRUNCATE);
 	entry.m_screenX = x;
 	entry.m_screenY = y;
-	entry.m_color = color;
-	entry.m_bgColor = bgColor;
-	entry.m_outlineColor = outlineColor;
+	entry.m_color = style.color;
+	entry.m_bgColor = style.bgColor;
+	entry.m_outlineColor = style.outlineColor;
 	m_textEntries.Add(entry);
 }
 
@@ -811,7 +811,7 @@ void DebugRender::AddText(int x, int y, const wchar_t* text, const D3DXCOLOR& co
 // AddText – 3D world position projected to screen
 //-------------------------------------------------------------------
 
-void DebugRender::AddText(const D3DXVECTOR3& worldPos, const wchar_t* text, const D3DXCOLOR& color, const D3DXCOLOR& bgColor, const D3DXCOLOR& outlineColor)
+void DebugRender::AddText(const D3DXVECTOR3& worldPos, const wchar_t* text, const DebugTextStyle& style)
 {
 	if (!text || !text[0])
 		return;
@@ -844,7 +844,7 @@ void DebugRender::AddText(const D3DXVECTOR3& worldPos, const wchar_t* text, cons
 	const int screenX = static_cast<int>((ndcX * 0.5f + 0.5f) * g_renderManager->GetResolutionWidth());
 	const int screenY = static_cast<int>((-ndcY * 0.5f + 0.5f) * g_renderManager->GetResolutionHeight());
 
-	AddText(screenX, screenY, text, color, bgColor, outlineColor);
+	AddText(screenX, screenY, text, style);
 }
 
 //-------------------------------------------------------------------
@@ -853,11 +853,11 @@ void DebugRender::AddText(const D3DXVECTOR3& worldPos, const wchar_t* text, cons
 // or any other transform to orient the label in the scene.
 //-------------------------------------------------------------------
 
-void DebugRender::AddText(const D3DXMATRIX& worldMatrix, const wchar_t* text, const D3DXCOLOR& color, const D3DXCOLOR& bgColor, const D3DXCOLOR& outlineColor)
+void DebugRender::AddText(const D3DXMATRIX& worldMatrix, const wchar_t* text, const DebugTextStyle& style)
 {
 	// Extract the world-space position from the matrix translation (row 4 in D3DX row-major)
 	const D3DXVECTOR3 worldPos(worldMatrix._41, worldMatrix._42, worldMatrix._43);
-	AddText(worldPos, text, color, bgColor, outlineColor);
+	AddText(worldPos, text, style);
 }
 
 //-------------------------------------------------------------------
