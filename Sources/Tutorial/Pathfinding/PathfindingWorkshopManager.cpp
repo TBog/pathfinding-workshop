@@ -148,7 +148,7 @@ void PathfindingWorkshopManager::Update(float dt)
 		}
 
 		const int menuItem = static_cast<int>(m_selectedExercise);
-		g_debugRender->AddText(10, 10, MENU_ITEMS_EXERCISES[menuItem].name, COLOR_YELLOW, WithAlpha(COLOR_BLACK, .5f));
+		g_debugRender->AddText(10, 10, MENU_ITEMS_EXERCISES[menuItem].name, {.color=COLOR_YELLOW, .bgColor=WithAlpha(COLOR_BLACK, .5f)});
 	}
 }
 
